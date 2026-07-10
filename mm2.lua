@@ -1,7 +1,10 @@
 --[[
     MM2 FULL MENU: AutoFarm, Fly (Mobile), Teleport, Fling, Noclip, Speed, Jump, Role ESP
     Для Delta Executor
-]]
+    Исправления:
+    - Fling: телепорт к цели, вращение с огромной скоростью, отбрасывание цели; после выключения возврат на твёрдую поверхность
+    - ESP: возможность включения/выключения, автоматическое обновление ролей каждую секунду
+--]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -15,9 +18,11 @@ _G.AutoFarm = false
 _G.Fly = false
 _G.Noclip = false
 _G.Fling = false
+_G.ESPEnabled = false        -- ESP выключен по умолчанию
 _G.SelectedTarget = nil
 _G.WalkSpeed = 16
 _G.JumpPower = 50
+_G.ESPRefresh = false        -- флаг для принудительного обновления ролей
 
 -- ===== GUI создание =====
 local gui = Instance.new("ScreenGui")
@@ -40,7 +45,7 @@ corner.CornerRadius = UDim.new(0, 10)
 -- Заголовок (Красный)
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 30)
-header.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Красный фон
+header.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 header.BorderSizePixel = 0
 header.Parent = mainFrame
 
@@ -52,7 +57,7 @@ local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.Text = "MM2 Script | draggable"
-title.TextColor3 = Color3.fromRGB(255, 255, 0) -- Желтый текст
+title.TextColor3 = Color3.fromRGB(255, 255, 0)
 title.TextSize = 14
 title.Font = Enum.Font.SourceSansBold
 title.BackgroundTransparency = 1
@@ -72,9 +77,9 @@ minimizeBtn.Font = Enum.Font.SourceSansBold
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 80, 0, 40)
 openBtn.Position = UDim2.new(0.5, -40, 0.2, 0)
-openBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 0) -- Желтый фон
+openBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
 openBtn.Text = "Open MM2"
-openBtn.TextColor3 = Color3.fromRGB(255, 0, 0) -- Красный текст для контраста
+openBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
 openBtn.TextSize = 14
 openBtn.Font = Enum.Font.SourceSansBold
 openBtn.Visible = false
@@ -112,7 +117,6 @@ local function makeDraggable(dragArea, moveTarget)
     end)
 end
 
--- Делаем меню и кнопку перетаскиваемыми
 makeDraggable(header, mainFrame)
 makeDraggable(openBtn, openBtn)
 
@@ -123,7 +127,7 @@ minimizeBtn.MouseButton1Click:Connect(function()
     openBtn.Visible = true
 end)
 
--- Логика разворачивания (Отличаем перетаскивание от простого клика)
+-- Логика разворачивания
 local clickStartPos
 openBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -133,7 +137,6 @@ end)
 openBtn.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         if clickStartPos and (input.Position - clickStartPos).Magnitude < 10 then
-            -- Это был клик, а не перетаскивание
             openBtn.Visible = false
             mainFrame.Position = UDim2.new(openBtn.Position.X.Scale, openBtn.Position.X.Offset - 90, openBtn.Position.Y.Scale, openBtn.Position.Y.Offset)
             mainFrame.Visible = true
@@ -153,6 +156,7 @@ local function createToggle(parent, yPos, text, callback)
     btn.TextSize = 13
     btn.BorderSizePixel = 0
     local btnCorner = Instance.new("UICorner", btn); btnCorner.CornerRadius = UDim.new(0, 6)
+
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
@@ -308,7 +312,13 @@ createButton(mainFrame, y, "Teleport to Target", function()
     end
 end); y = y + 35
 
-createToggle(mainFrame, y, "Target Fling", function(state) _G.Fling = state end); y = y + 35
+createToggle(mainFrame, y, "Target Fling", function(state) 
+    _G.Fling = state
+    if not state then
+        -- При выключении сбросим флаг активации
+        _G.FlingJustActivated = false
+    end
+end); y = y + 35
 
 createInputControl(mainFrame, y, "WalkSpeed", 16, function(val)
     _G.WalkSpeed = val
@@ -324,14 +334,14 @@ createInputControl(mainFrame, y, "JumpPower", 50, function(val)
     end
 end); y = y + 35
 
-local espLabel = Instance.new("TextLabel", mainFrame)
-espLabel.Size = UDim2.new(1, -20, 0, 20)
-espLabel.Position = UDim2.new(0, 10, 0, y)
-espLabel.Text = "Role ESP: Active"
-espLabel.TextColor3 = Color3.new(0.5, 1, 0.5)
-espLabel.Font = Enum.Font.SourceSansSemibold
-espLabel.TextSize = 13
-espLabel.BackgroundTransparency = 1
+createToggle(mainFrame, y, "Role ESP", function(state) 
+    _G.ESPEnabled = state
+    if not state then
+        -- При выключении удаляем все ESP
+        clearESP()
+        roleESPfunctions = {}
+    end
+end); y = y + 35
 
 -- ===== Логика скриптов =====
 
@@ -349,8 +359,26 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Целевой Fling
+-- Fling (улучшенный)
+_G.FlingJustActivated = false  -- флаг для однократного толчка
 local WasFlinging = false
+
+-- Функция поиска твёрдой поверхности под позицией
+local function findGround(position)
+    local rayOrigin = position + Vector3.new(0, 10, 0)
+    local rayDirection = Vector3.new(0, -500, 0)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character or game:GetService("Players").LocalPlayer.CharacterAdded:Wait()}
+    
+    local result = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    if result then
+        return result.Position + Vector3.new(0, 3, 0)  -- немного выше земли
+    else
+        return position + Vector3.new(0, 0, 0)  -- если не нашли, вернуть исходную с Y = 0?
+    end
+end
+
 RunService.Stepped:Connect(function()
     if _G.Fling and _G.SelectedTarget and _G.SelectedTarget.Character then
         local char = LocalPlayer.Character
@@ -363,9 +391,17 @@ RunService.Stepped:Connect(function()
                 WasFlinging = true
                 if tRoot.Position.Y > -50 then
                     hum.PlatformStand = true
-                    root.CFrame = tRoot.CFrame
-                    root.Velocity = Vector3.new(0, 0, 0) 
-                    root.RotVelocity = Vector3.new(15000, 15000, 15000) 
+                    root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 2)  -- телепорт чуть впереди цели
+                    root.Velocity = Vector3.new(0, 0, 0)
+                    root.RotVelocity = Vector3.new(15000, 15000, 15000)
+
+                    -- Однократный мощный толчок цели при активации
+                    if _G.FlingJustActivated then
+                        tRoot.Velocity = Vector3.new(math.random(-2000, 2000), 5000, math.random(-2000, 2000))
+                        _G.FlingJustActivated = false
+                    end
+
+                    -- Отключаем коллизии нашего персонажа, чтобы не мешать
                     for _, part in ipairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then part.CanCollide = false end
                     end
@@ -382,7 +418,10 @@ RunService.Stepped:Connect(function()
             local hum = char:FindFirstChild("Humanoid")
             local root = char:FindFirstChild("HumanoidRootPart")
             if hum and not _G.Fly then hum.PlatformStand = false end
-            if root then 
+            if root then
+                -- Возвращаем на твёрдую поверхность
+                local groundPos = findGround(root.Position)
+                root.CFrame = CFrame.new(groundPos)
                 root.Velocity = Vector3.new(0, 0, 0)
                 root.RotVelocity = Vector3.new(0, 0, 0)
             end
@@ -527,7 +566,27 @@ local function createESP(target, role, color)
 end
 
 local roleESPfunctions = {}
+
+-- Цикл обновления ролей каждую секунду
+task.spawn(function()
+    while true do
+        if _G.ESPEnabled then
+            _G.ESPRefresh = true
+        end
+        task.wait(1)
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
+    if not _G.ESPEnabled then return end
+
+    -- Если флаг обновления, сбрасываем весь ESP и создаём заново
+    if _G.ESPRefresh then
+        _G.ESPRefresh = false
+        clearESP()
+        roleESPfunctions = {}
+    end
+
     local newESP = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -551,4 +610,4 @@ LocalPlayer.CharacterAdded:Connect(function()
     roleESPfunctions = {}
 end)
 
-print("MM2 Full Menu v4 (Minimize/Draggable Custom Colors) загружен!")
+print("MM2 Full Menu v5 (Fling fix, ESP toggle + auto-refresh) загружен!")
