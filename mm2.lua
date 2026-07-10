@@ -1,5 +1,5 @@
 --[[
-    MM2 FULL MENU: AutoFarm, Fly, Fling (Target), Noclip, Speed, Jump, Role ESP
+    MM2 FULL MENU: AutoFarm, Fly (Mobile), Teleport, Fling, Noclip, Speed, Jump, Role ESP
     Для Delta Executor
 ]]
 
@@ -15,7 +15,7 @@ _G.AutoFarm = false
 _G.Fly = false
 _G.Noclip = false
 _G.Fling = false
-_G.FlingTarget = nil
+_G.SelectedTarget = nil
 _G.WalkSpeed = 16
 _G.JumpPower = 50
 
@@ -24,62 +24,124 @@ local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
+-- Главный фрейм
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 420) -- Увеличен размер для новых кнопок
+mainFrame.Size = UDim2.new(0, 260, 0, 400)
 mainFrame.Position = UDim2.new(0.5, -130, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
-mainFrame.Draggable = false
+mainFrame.Parent = gui
 
--- скругление углов
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 10)
 
+-- Заголовок (Красный)
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 30)
-header.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+header.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Красный фон
 header.BorderSizePixel = 0
+header.Parent = mainFrame
+
 local headerCorner = Instance.new("UICorner", header)
 headerCorner.CornerRadius = UDim.new(0, 10)
+
+-- Название (Желтый)
 local title = Instance.new("TextLabel", header)
-title.Size = UDim2.new(1, -10, 1, 0)
+title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.Text = "MM2 Script | draggable"
-title.TextColor3 = Color3.new(1, 1, 1)
+title.TextColor3 = Color3.fromRGB(255, 255, 0) -- Желтый текст
 title.TextSize = 14
 title.Font = Enum.Font.SourceSansBold
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Drag системы
-local dragging = false
-local dragStart = nil
-local startPos = nil
-header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
+-- Кнопка скрыть/свернуть [-]
+local minimizeBtn = Instance.new("TextButton", header)
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.BackgroundTransparency = 1
+minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.TextSize = 20
+minimizeBtn.Font = Enum.Font.SourceSansBold
+
+-- Кнопка развернуть (Желтая, изначально скрыта)
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.new(0, 80, 0, 40)
+openBtn.Position = UDim2.new(0.5, -40, 0.2, 0)
+openBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 0) -- Желтый фон
+openBtn.Text = "Open MM2"
+openBtn.TextColor3 = Color3.fromRGB(255, 0, 0) -- Красный текст для контраста
+openBtn.TextSize = 14
+openBtn.Font = Enum.Font.SourceSansBold
+openBtn.Visible = false
+openBtn.Active = true
+openBtn.Parent = gui
+
+local openCorner = Instance.new("UICorner", openBtn)
+openCorner.CornerRadius = UDim.new(0, 8)
+
+-- ===== Система перетаскивания (Универсальная) =====
+local function makeDraggable(dragArea, moveTarget)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = moveTarget.Position
+        end
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            moveTarget.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Делаем меню и кнопку перетаскиваемыми
+makeDraggable(header, mainFrame)
+makeDraggable(openBtn, openBtn)
+
+-- Логика скрытия
+minimizeBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+    openBtn.Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset + 90, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
+    openBtn.Visible = true
+end)
+
+-- Логика разворачивания (Отличаем перетаскивание от простого клика)
+local clickStartPos
+openBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        clickStartPos = input.Position
     end
 end)
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-UIS.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+openBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if clickStartPos and (input.Position - clickStartPos).Magnitude < 10 then
+            -- Это был клик, а не перетаскивание
+            openBtn.Visible = false
+            mainFrame.Position = UDim2.new(openBtn.Position.X.Scale, openBtn.Position.X.Offset - 90, openBtn.Position.Y.Scale, openBtn.Position.Y.Offset)
+            mainFrame.Visible = true
+        end
     end
 end)
 
-mainFrame.Parent = gui
-header.Parent = mainFrame
-
--- Элементы интерфейса
+-- ===== Элементы интерфейса =====
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 30)
@@ -90,8 +152,7 @@ local function createToggle(parent, yPos, text, callback)
     btn.Font = Enum.Font.SourceSansSemibold
     btn.TextSize = 13
     btn.BorderSizePixel = 0
-    local btnCorner = Instance.new("UICorner", btn)
-    btnCorner.CornerRadius = UDim.new(0, 6)
+    local btnCorner = Instance.new("UICorner", btn); btnCorner.CornerRadius = UDim.new(0, 6)
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
@@ -103,14 +164,31 @@ local function createToggle(parent, yPos, text, callback)
     return btn
 end
 
-local function createValueControl(parent, yPos, name, min, max, default, callback)
+local function createButton(parent, yPos, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 100, 200)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSansSemibold
+    btn.TextSize = 13
+    local btnCorner = Instance.new("UICorner", btn); btnCorner.CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(callback)
+    btn.Parent = parent
+    return btn
+end
+
+local function createInputControl(parent, yPos, name, default, callback)
     local holder = Instance.new("Frame")
     holder.Size = UDim2.new(1, -20, 0, 30)
     holder.Position = UDim2.new(0, 10, 0, yPos)
-    holder.BackgroundTransparency = 1
-    
+    holder.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    local hC = Instance.new("UICorner", holder); hC.CornerRadius = UDim.new(0, 6)
+
     local label = Instance.new("TextLabel", holder)
     label.Size = UDim2.new(0, 100, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.Text = name
     label.TextColor3 = Color3.new(0.9, 0.9, 0.9)
     label.Font = Enum.Font.SourceSansSemibold
@@ -118,51 +196,29 @@ local function createValueControl(parent, yPos, name, min, max, default, callbac
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
 
-    local val = default
-    local valLabel = Instance.new("TextLabel", holder)
-    valLabel.Size = UDim2.new(0, 40, 1, 0)
-    valLabel.Position = UDim2.new(1, -120, 0, 0)
-    valLabel.Text = tostring(val)
-    valLabel.TextColor3 = Color3.new(1, 1, 1)
-    valLabel.Font = Enum.Font.SourceSansBold
-    valLabel.TextSize = 14
-    valLabel.BackgroundTransparency = 1
+    local input = Instance.new("TextBox", holder)
+    input.Size = UDim2.new(0, 60, 1, -10)
+    input.Position = UDim2.new(1, -70, 0, 5)
+    input.Text = tostring(default)
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    input.Font = Enum.Font.SourceSansBold
+    input.TextSize = 14
+    local inputC = Instance.new("UICorner", input); inputC.CornerRadius = UDim.new(0, 4)
 
-    local minus = Instance.new("TextButton", holder)
-    minus.Size = UDim2.new(0, 30, 0, 26)
-    minus.Position = UDim2.new(1, -75, 0, 2)
-    minus.Text = "-"
-    minus.TextColor3 = Color3.new(1, 1, 1)
-    minus.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    minus.Font = Enum.Font.SourceSansBold
-    minus.TextSize = 18
-    local minusC = Instance.new("UICorner", minus); minusC.CornerRadius = UDim.new(0, 4)
-
-    local plus = Instance.new("TextButton", holder)
-    plus.Size = UDim2.new(0, 30, 0, 26)
-    plus.Position = UDim2.new(1, -40, 0, 2)
-    plus.Text = "+"
-    plus.TextColor3 = Color3.new(1, 1, 1)
-    plus.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    plus.Font = Enum.Font.SourceSansBold
-    plus.TextSize = 18
-    local plusC = Instance.new("UICorner", plus); plusC.CornerRadius = UDim.new(0, 4)
-
-    local function update()
-        val = math.clamp(math.floor(val), min, max)
-        valLabel.Text = tostring(val)
-        callback(val)
-    end
-
-    minus.MouseButton1Click:Connect(function() val = val - 1; update() end)
-    plus.MouseButton1Click:Connect(function() val = val + 1; update() end)
-
+    input.FocusLost:Connect(function()
+        local val = tonumber(input.Text)
+        if val then
+            callback(val)
+        else
+            input.Text = tostring(default)
+        end
+    end)
     holder.Parent = parent
-    update()
+    callback(default)
     return holder
 end
 
--- Система выбора цели для Fling
 local function createTargetSelector(parent, yPos)
     local holder = Instance.new("Frame")
     holder.Size = UDim2.new(1, -20, 0, 30)
@@ -209,32 +265,28 @@ local function createTargetSelector(parent, yPos)
         local list = getPlayers()
         if #list == 0 then
             label.Text = "Target: None"
-            _G.FlingTarget = nil
+            _G.SelectedTarget = nil
             return
         end
         if targetIndex > #list then targetIndex = 1 end
         if targetIndex < 1 then targetIndex = #list end
-        _G.FlingTarget = list[targetIndex]
-        label.Text = "Target: " .. _G.FlingTarget.Name
+        _G.SelectedTarget = list[targetIndex]
+        label.Text = "Target: " .. _G.SelectedTarget.Name
     end
 
     btnPrev.MouseButton1Click:Connect(function() targetIndex = targetIndex - 1; updateTarget() end)
     btnNext.MouseButton1Click:Connect(function() targetIndex = targetIndex + 1; updateTarget() end)
     
-    -- Периодическое обновление списка на случай выхода игрока
     task.spawn(function()
         while task.wait(2) do
-            if _G.FlingTarget and not _G.FlingTarget.Parent then
-                updateTarget()
-            end
+            if _G.SelectedTarget and not _G.SelectedTarget.Parent then updateTarget() end
         end
     end)
-
     holder.Parent = parent
     updateTarget()
 end
 
--- Добавляем контролы в mainFrame
+-- Добавляем элементы в главное окно
 local y = 40
 createToggle(mainFrame, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 35
 createToggle(mainFrame, y, "Fly", function(state) 
@@ -243,24 +295,29 @@ createToggle(mainFrame, y, "Fly", function(state)
         LocalPlayer.Character.Humanoid.PlatformStand = true
     end
 end); y = y + 35
-
--- Noclip кнопка
 createToggle(mainFrame, y, "Noclip", function(state) _G.Noclip = state end); y = y + 35
 
--- Target Selector
+-- Цели и Телепорт
 createTargetSelector(mainFrame, y); y = y + 35
+createButton(mainFrame, y, "Teleport to Target", function()
+    if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = _G.SelectedTarget.Character.HumanoidRootPart.CFrame
+        end
+    end
+end); y = y + 35
 
--- Fling
 createToggle(mainFrame, y, "Target Fling", function(state) _G.Fling = state end); y = y + 35
 
-createValueControl(mainFrame, y, "WalkSpeed", 16, 200, 16, function(val)
+createInputControl(mainFrame, y, "WalkSpeed", 16, function(val)
     _G.WalkSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = val
     end
 end); y = y + 35
 
-createValueControl(mainFrame, y, "JumpPower", 50, 500, 50, function(val)
+createInputControl(mainFrame, y, "JumpPower", 50, function(val)
     _G.JumpPower = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.JumpPower = val
@@ -276,7 +333,9 @@ espLabel.Font = Enum.Font.SourceSansSemibold
 espLabel.TextSize = 13
 espLabel.BackgroundTransparency = 1
 
--- ===== Noclip Логика =====
+-- ===== Логика скриптов =====
+
+-- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
         local char = LocalPlayer.Character
@@ -290,41 +349,33 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ===== Целевой Fling (С защитой от вылета за карту) =====
+-- Целевой Fling
 local WasFlinging = false
 RunService.Stepped:Connect(function()
-    if _G.Fling and _G.FlingTarget and _G.FlingTarget.Character then
+    if _G.Fling and _G.SelectedTarget and _G.SelectedTarget.Character then
         local char = LocalPlayer.Character
-        local tChar = _G.FlingTarget.Character
+        local tChar = _G.SelectedTarget.Character
         if char and tChar then
             local root = char:FindFirstChild("HumanoidRootPart")
             local tRoot = tChar:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChild("Humanoid")
-            
             if root and tRoot and hum then
                 WasFlinging = true
-                -- Защита от полета за карту: если цель упала ниже -50, мы не следуем за ней
                 if tRoot.Position.Y > -50 then
                     hum.PlatformStand = true
-                    
-                    -- Держимся на цели и бешено крутимся
                     root.CFrame = tRoot.CFrame
-                    root.Velocity = Vector3.new(0, 0, 0) -- Убираем нашу скорость, чтобы нас не откинуло
-                    root.RotVelocity = Vector3.new(15000, 15000, 15000) -- Вращение для флинга цели
-                    
-                    -- Принудительный Noclip во время Fling, чтобы не застрять в стенах
+                    root.Velocity = Vector3.new(0, 0, 0) 
+                    root.RotVelocity = Vector3.new(15000, 15000, 15000) 
                     for _, part in ipairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then part.CanCollide = false end
                     end
                 else
-                    -- Цель упала за карту, останавливаемся
                     hum.PlatformStand = false
                     root.RotVelocity = Vector3.new(0, 0, 0)
                 end
             end
         end
     elseif WasFlinging then
-        -- Выключили флинг, возвращаем персонажа в норму
         WasFlinging = false
         local char = LocalPlayer.Character
         if char then
@@ -339,7 +390,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ===== Auto Farm =====
+-- Auto Farm
 RunService.RenderStepped:Connect(function()
     if not _G.AutoFarm then return end
     local char = LocalPlayer.Character
@@ -349,9 +400,7 @@ RunService.RenderStepped:Connect(function()
 
     local coins = {}
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then
-            table.insert(coins, obj)
-        end
+        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then table.insert(coins, obj) end
     end
     for _, folderName in ipairs({"Coins", "CoinContainer", "CoinFolder", "ServerCoins"}) do
         local folder = Workspace:FindFirstChild(folderName)
@@ -369,44 +418,40 @@ RunService.RenderStepped:Connect(function()
     end
 
     if #coins > 0 then
-        table.sort(coins, function(a, b)
-            return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude
-        end)
+        table.sort(coins, function(a, b) return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude end)
         root.CFrame = coins[1].CFrame
     end
 end)
 
--- ===== Fly =====
-local flyConnection
-local function startFly()
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not _G.Fly then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then hum.PlatformStand = true end
+-- Fly
+local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+RunService.RenderStepped:Connect(function()
+    if not _G.Fly then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then hum.PlatformStand = true end
 
-        local moveDirection = Vector3.new()
-        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDirection += Camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDirection -= Camera.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDirection -= Camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDirection += Camera.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection -= Vector3.new(0, 1, 0) end
+    local moveVector = PlayerModule:GetControls():GetMoveVector()
+    local moveDirection = Vector3.new()
 
-        if moveDirection.Magnitude > 0 then
-            root.CFrame = root.CFrame + moveDirection.Unit * 0.5
-            root.Velocity = Vector3.new(0, 0, 0)
-        else
-            root.Velocity = Vector3.new(0, 0, 0)
-        end
-    end)
-end
-startFly()
+    if moveVector.Magnitude > 0 then
+        moveDirection = (Camera.CFrame.RightVector * moveVector.X) + (Camera.CFrame.LookVector * -moveVector.Z)
+    end
+    if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0, 1, 0) end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection -= Vector3.new(0, 1, 0) end
 
--- ===== Role ESP =====
+    if moveDirection.Magnitude > 0 then
+        root.CFrame = root.CFrame + moveDirection.Unit * 1.5
+        root.Velocity = Vector3.new(0, 0, 0)
+    else
+        root.Velocity = Vector3.new(0, 0, 0)
+    end
+end)
+
+-- Role ESP
 local drawingCache = {}
 local function clearESP()
     for _, obj in ipairs(drawingCache) do
@@ -418,12 +463,13 @@ end
 
 local function getRole(player)
     local char = player.Character
-    if not char then return "Unknown" end
-    for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("Tool") then
-            local name = child.Name:lower()
-            if name:find("knife") or name:find("murder") then return "Murderer"
-            elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
+    if char then
+        for _, child in ipairs(char:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = child.Name:lower()
+                if name:find("knife") or name:find("murder") then return "Murderer"
+                elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
+            end
         end
     end
     local bp = player:FindFirstChild("Backpack")
@@ -462,7 +508,6 @@ local function createESP(target, role, color)
         local cam = Workspace.CurrentCamera
         local pos, onScreen = cam:WorldToViewportPoint(root.Position)
         if onScreen then
-            local dist = (cam.CFrame.Position - root.Position).Magnitude
             local headPos = cam:WorldToViewportPoint(head.Position)
             local height = (pos - headPos).Magnitude * 1.2
             local width = height * 0.6
@@ -506,4 +551,4 @@ LocalPlayer.CharacterAdded:Connect(function()
     roleESPfunctions = {}
 end)
 
-print("MM2 Full Menu v2 активирован.")
+print("MM2 Full Menu v4 (Minimize/Draggable Custom Colors) загружен!")
