@@ -1,11 +1,9 @@
 --[[
-    MM2 FULL MENU v8 (Ultimate): AutoFarm, Fly, Teleport, Proximity Fling, Noclip, Speed, Jump,
-    Role ESP (Outline), Music Player, AutoShoot, KillAll, Take Gun
-    Изменения:
-    - Fling: теперь персонаж бешено крутится на месте и отбрасывает любого, кто подойдёт близко (Proximity Fling)
-    - Добавлены кнопки: AutoShoot (автоматическое наведение на мёрдера и выстрел), KillAll (убить всех, если вы мёрдер), Take Gun (телепорт к лежащему пистолету и подбор)
-    - Заголовок: "🔪 MM2 Script / BY TheG0ldStand"
---]]
+    MM2 FULL MENU v9 (Scrolling + Shoot Button):
+    - Весь интерфейс внутри ScrollingFrame (кроме заголовка)
+    - AutoShoot: при включении появляется перетаскиваемая кнопка "🔫 SHOOT", нажатие — выстрел в мёрдера
+    - Spin Fling, Kill All, Take Gun, Music Player, ESP обводка
+]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -25,6 +23,7 @@ _G.WalkSpeed = 16
 _G.JumpPower = 50
 _G.ESPRefresh = false
 _G.AutoShoot = false
+_G.AutoShootButton = nil
 _G.KillAllActive = false
 
 -- ==================== GUI ====================
@@ -33,8 +32,9 @@ gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- Главное окно
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 580)  -- увеличен под новые кнопки
+mainFrame.Size = UDim2.new(0, 300, 0, 450)  -- фиксированная высота видимой области
 mainFrame.Position = UDim2.new(0.5, -150, 0.1, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BackgroundTransparency = 0.15
@@ -57,6 +57,7 @@ shadow.ZIndex = 0
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 14)
 
+-- Заголовок
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 36)
 header.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
@@ -84,6 +85,7 @@ title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextStrokeTransparency = 0.5
 title.TextStrokeColor3 = Color3.fromRGB(100, 0, 0)
 
+-- Кнопка свернуть
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0, 36, 0, 36)
 minimizeBtn.Position = UDim2.new(1, -36, 0, 0)
@@ -94,6 +96,7 @@ minimizeBtn.TextSize = 22
 minimizeBtn.Font = Enum.Font.GothamBold
 minimizeBtn.TextStrokeTransparency = 0.6
 
+-- Кнопка развернуть (стильная, плавающая)
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 90, 0, 40)
 openBtn.Position = UDim2.new(0.5, -45, 0.2, 0)
@@ -117,6 +120,7 @@ openShadow.ScaleType = Enum.ScaleType.Slice
 openShadow.SliceCenter = Rect.new(24, 24, 24, 24)
 openShadow.ZIndex = 0
 
+-- ===== Перетаскивание =====
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local dragStart = nil
@@ -165,7 +169,23 @@ openBtn.InputEnded:Connect(function(input)
     end
 end)
 
--- ===== Элементы интерфейса =====
+-- ===== ScrollingFrame =====
+local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+scrollFrame.Size = UDim2.new(1, 0, 1, -36)
+scrollFrame.Position = UDim2.new(0, 0, 0, 36)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+scrollFrame.ScrollBarImageTransparency = 0.7
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)  -- будет обновляться
+
+local scrollContent = Instance.new("Frame", scrollFrame)
+scrollContent.Size = UDim2.new(1, 0, 0, 0)  -- высота будет расти
+scrollContent.BackgroundTransparency = 1
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, scrollContent.Size.Y.Offset)
+
+-- ===== Элементы интерфейса (добавляем в scrollContent) =====
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -24, 0, 32)
@@ -347,19 +367,19 @@ local function createTargetSelector(parent, yPos)
     updateTarget()
 end
 
--- ===== Построение меню =====
-local y = 45
-createToggle(mainFrame, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
-createToggle(mainFrame, y, "Fly", function(state)
+-- Заполняем scrollContent
+local y = 0
+createToggle(scrollContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
+createToggle(scrollContent, y, "Fly", function(state)
     _G.Fly = state
     if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.PlatformStand = true
     end
 end); y = y + 38
-createToggle(mainFrame, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
+createToggle(scrollContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
-createTargetSelector(mainFrame, y); y = y + 38
-createButton(mainFrame, y, "Teleport to Target", function()
+createTargetSelector(scrollContent, y); y = y + 38
+createButton(scrollContent, y, "Teleport to Target", function()
     if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
@@ -368,29 +388,37 @@ createButton(mainFrame, y, "Teleport to Target", function()
     end
 end); y = y + 38
 
-createToggle(mainFrame, y, "Spin Fling", function(state) _G.Fling = state end); y = y + 38
+createToggle(scrollContent, y, "Spin Fling", function(state) _G.Fling = state end); y = y + 38
 
-createInputControl(mainFrame, y, "WalkSpeed", 16, function(val)
+createInputControl(scrollContent, y, "WalkSpeed", 16, function(val)
     _G.WalkSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = val
     end
 end); y = y + 38
 
-createInputControl(mainFrame, y, "JumpPower", 50, function(val)
+createInputControl(scrollContent, y, "JumpPower", 50, function(val)
     _G.JumpPower = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.JumpPower = val
     end
 end); y = y + 38
 
-createToggle(mainFrame, y, "Role ESP", function(state)
+createToggle(scrollContent, y, "Role ESP", function(state)
     _G.ESPEnabled = state
     if not state then clearESP() end
 end); y = y + 38
 
-createToggle(mainFrame, y, "AutoShoot", function(state) _G.AutoShoot = state end); y = y + 38
-createButton(mainFrame, y, "Kill All", function() 
+createToggle(scrollContent, y, "AutoShoot", function(state)
+    _G.AutoShoot = state
+    if state then
+        createAutoShootButton()
+    else
+        destroyAutoShootButton()
+    end
+end); y = y + 38
+
+createButton(scrollContent, y, "Kill All", function() 
     if not _G.KillAllActive then
         _G.KillAllActive = true
         task.spawn(function()
@@ -400,7 +428,7 @@ createButton(mainFrame, y, "Kill All", function()
     end
 end); y = y + 38
 
-createButton(mainFrame, y, "Take Gun", function() takeGun() end); y = y + 38
+createButton(scrollContent, y, "Take Gun", function() takeGun() end); y = y + 38
 
 -- Music Player
 local musicFrame = Instance.new("Frame")
@@ -409,7 +437,7 @@ musicFrame.Position = UDim2.new(0, 12, 0, y)
 musicFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 musicFrame.BorderSizePixel = 0
 local mCorner = Instance.new("UICorner", musicFrame); mCorner.CornerRadius = UDim.new(0, 8)
-musicFrame.Parent = mainFrame
+musicFrame.Parent = scrollContent
 
 local musicLabel = Instance.new("TextLabel", musicFrame)
 musicLabel.Size = UDim2.new(1, 0, 0, 18)
@@ -442,7 +470,13 @@ playBtn.TextSize = 12
 playBtn.BorderSizePixel = 0
 local playCorner = Instance.new("UICorner", playBtn); playCorner.CornerRadius = UDim.new(0, 5)
 
--- ==================== Игровая логика ====================
+y = y + 55
+
+-- Обновляем размер контента
+scrollContent.Size = UDim2.new(1, 0, 0, y + 10)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, scrollContent.Size.Y.Offset)
+
+-- ==================== Логика функций ====================
 
 -- Noclip
 RunService.Stepped:Connect(function()
@@ -458,7 +492,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Proximity Fling (Spin + отбрасывание)
+-- Spin Fling (бешеное вращение + отбрасывание приближающихся)
 RunService.Stepped:Connect(function()
     if not _G.Fling then return end
     local char = LocalPlayer.Character
@@ -468,9 +502,8 @@ RunService.Stepped:Connect(function()
     if not root or not hum then return end
 
     hum.PlatformStand = true
-    root.RotVelocity = Vector3.new(0, 2000, 0)  -- бешеное вращение
+    root.RotVelocity = Vector3.new(0, 2000, 0)  -- вращение
 
-    -- Проверяем всех игроков в радиусе 15
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
         local targetChar = plr.Character
@@ -479,7 +512,6 @@ RunService.Stepped:Connect(function()
             if targetRoot then
                 local dist = (root.Position - targetRoot.Position).Magnitude
                 if dist <= 15 then
-                    -- Кидаем за карту
                     targetRoot.Velocity = Vector3.new(
                         math.random(-3000, 3000),
                         math.random(4000, 8000),
@@ -551,13 +583,57 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AutoShoot
-RunService.RenderStepped:Connect(function()
-    if not _G.AutoShoot then return end
+-- AutoShoot: создаём перетаскиваемую кнопку
+function createAutoShootButton()
+    if _G.AutoShootButton then return end
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 120, 0, 45)
+    btn.Position = UDim2.new(0.8, -60, 0.5, -22)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    btn.Text = "🔫 SHOOT"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Parent = gui
+
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 12)
+    local shadow = Instance.new("ImageLabel", btn)
+    shadow.Size = UDim2.new(1, 10, 1, 10)
+    shadow.Position = UDim2.new(0, -5, 0, -5)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://6014261993"
+    shadow.ImageTransparency = 0.7
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(24, 24, 24, 24)
+    shadow.ZIndex = 0
+
+    -- Перетаскивание
+    makeDraggable(btn, btn)
+
+    -- Действие: выстрел в мёрдера
+    btn.MouseButton1Click:Connect(function()
+        shootMurderer()
+    end)
+
+    _G.AutoShootButton = btn
+end
+
+function destroyAutoShootButton()
+    if _G.AutoShootButton then
+        _G.AutoShootButton:Destroy()
+        _G.AutoShootButton = nil
+    end
+end
+
+function shootMurderer()
     local char = LocalPlayer.Character
     if not char then return end
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or not (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then return end
+
     -- Ищем мёрдера
     local murderer = nil
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -569,14 +645,16 @@ RunService.RenderStepped:Connect(function()
         end
     end
     if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Head") then return end
+
     local head = murderer.Character.Head
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-    -- Поворачиваемся к голове мёрдера
+
+    -- Поворачиваемся к голове
     root.CFrame = CFrame.new(root.Position, head.Position)
     -- Стреляем
     tool:Activate()
-end)
+end
 
 -- Kill All
 function killAll()
@@ -592,11 +670,9 @@ function killAll()
         local targetChar = plr.Character
         if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
             local targetRoot = targetChar.HumanoidRootPart
-            -- Телепортируемся к нему
             root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
-            -- Убиваем (активируем нож)
             tool:Activate()
-            task.wait(0.1)  -- небольшая задержка
+            task.wait(0.1)
         end
     end
 end
@@ -604,7 +680,6 @@ end
 -- Take Gun
 function takeGun()
     local gun = nil
-    -- Ищем пистолет на карте (Tool)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Tool") and (obj.Name:lower():find("gun") or obj.Name:lower():find("pistol") or obj.Name:lower():find("sheriff")) then
             gun = obj
@@ -612,15 +687,12 @@ function takeGun()
         end
     end
     if not gun then return end
-    -- Находим точку для телепортации (ручка или сам объект)
     local handle = gun:FindFirstChild("Handle") or gun.Parent
     local pos = handle and handle.Position or gun.Position
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     char.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
-    -- Ждём подбора
     task.wait(0.3)
-    -- Если не подобралось, попробуем вручную положить в рюкзак (но обычно срабатывает)
     if gun.Parent ~= LocalPlayer.Backpack and gun.Parent ~= char then
         pcall(function() gun.Parent = LocalPlayer.Backpack end)
     end
@@ -775,4 +847,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("✅ MM2 Script v8 / BY TheG0ldStand загружен!")
+print("✅ MM2 Script v9 / BY TheG0ldStand загружен! Scrolling + Shoot button")
