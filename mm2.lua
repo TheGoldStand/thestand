@@ -1,5 +1,5 @@
 --[[
-    MM2 FULL MENU: AutoFarm, Fly, Fling, Speed, Jump, Role ESP
+    MM2 FULL MENU: AutoFarm, Fly, Fling (Target), Noclip, Speed, Jump, Role ESP
     Для Delta Executor
 ]]
 
@@ -10,13 +10,22 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
+-- Глобальные переменные для функций
+_G.AutoFarm = false
+_G.Fly = false
+_G.Noclip = false
+_G.Fling = false
+_G.FlingTarget = nil
+_G.WalkSpeed = 16
+_G.JumpPower = 50
+
 -- ===== GUI создание =====
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 360)
+mainFrame.Size = UDim2.new(0, 260, 0, 420) -- Увеличен размер для новых кнопок
 mainFrame.Position = UDim2.new(0.5, -130, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BackgroundTransparency = 0.2
@@ -70,7 +79,7 @@ end)
 mainFrame.Parent = gui
 header.Parent = mainFrame
 
--- Функция создания кнопки-переключателя
+-- Элементы интерфейса
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 30)
@@ -94,14 +103,12 @@ local function createToggle(parent, yPos, text, callback)
     return btn
 end
 
--- Функция создания строки с двумя кнопками +/- и значением
 local function createValueControl(parent, yPos, name, min, max, default, callback)
     local holder = Instance.new("Frame")
     holder.Size = UDim2.new(1, -20, 0, 30)
     holder.Position = UDim2.new(0, 10, 0, yPos)
     holder.BackgroundTransparency = 1
-    holder.BorderSizePixel = 0
-
+    
     local label = Instance.new("TextLabel", holder)
     label.Size = UDim2.new(0, 100, 1, 0)
     label.Text = name
@@ -120,7 +127,6 @@ local function createValueControl(parent, yPos, name, min, max, default, callbac
     valLabel.Font = Enum.Font.SourceSansBold
     valLabel.TextSize = 14
     valLabel.BackgroundTransparency = 1
-    valLabel.TextXAlignment = Enum.TextXAlignment.Center
 
     local minus = Instance.new("TextButton", holder)
     minus.Size = UDim2.new(0, 30, 0, 26)
@@ -130,7 +136,6 @@ local function createValueControl(parent, yPos, name, min, max, default, callbac
     minus.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     minus.Font = Enum.Font.SourceSansBold
     minus.TextSize = 18
-    minus.BorderSizePixel = 0
     local minusC = Instance.new("UICorner", minus); minusC.CornerRadius = UDim.new(0, 4)
 
     local plus = Instance.new("TextButton", holder)
@@ -141,7 +146,6 @@ local function createValueControl(parent, yPos, name, min, max, default, callbac
     plus.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     plus.Font = Enum.Font.SourceSansBold
     plus.TextSize = 18
-    plus.BorderSizePixel = 0
     local plusC = Instance.new("UICorner", plus); plusC.CornerRadius = UDim.new(0, 4)
 
     local function update()
@@ -158,28 +162,96 @@ local function createValueControl(parent, yPos, name, min, max, default, callbac
     return holder
 end
 
+-- Система выбора цели для Fling
+local function createTargetSelector(parent, yPos)
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(1, -20, 0, 30)
+    holder.Position = UDim2.new(0, 10, 0, yPos)
+    holder.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    local hC = Instance.new("UICorner", holder); hC.CornerRadius = UDim.new(0, 6)
+
+    local label = Instance.new("TextLabel", holder)
+    label.Size = UDim2.new(1, -60, 1, 0)
+    label.Position = UDim2.new(0, 30, 0, 0)
+    label.Text = "Target: None"
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.SourceSansSemibold
+    label.TextSize = 13
+    label.BackgroundTransparency = 1
+
+    local btnPrev = Instance.new("TextButton", holder)
+    btnPrev.Size = UDim2.new(0, 30, 1, 0)
+    btnPrev.Text = "<"
+    btnPrev.TextColor3 = Color3.new(1, 1, 1)
+    btnPrev.BackgroundTransparency = 1
+    btnPrev.Font = Enum.Font.SourceSansBold
+    btnPrev.TextSize = 16
+
+    local btnNext = Instance.new("TextButton", holder)
+    btnNext.Size = UDim2.new(0, 30, 1, 0)
+    btnNext.Position = UDim2.new(1, -30, 0, 0)
+    btnNext.Text = ">"
+    btnNext.TextColor3 = Color3.new(1, 1, 1)
+    btnNext.BackgroundTransparency = 1
+    btnNext.Font = Enum.Font.SourceSansBold
+    btnNext.TextSize = 16
+
+    local targetIndex = 1
+    local function getPlayers()
+        local list = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then table.insert(list, p) end
+        end
+        return list
+    end
+
+    local function updateTarget()
+        local list = getPlayers()
+        if #list == 0 then
+            label.Text = "Target: None"
+            _G.FlingTarget = nil
+            return
+        end
+        if targetIndex > #list then targetIndex = 1 end
+        if targetIndex < 1 then targetIndex = #list end
+        _G.FlingTarget = list[targetIndex]
+        label.Text = "Target: " .. _G.FlingTarget.Name
+    end
+
+    btnPrev.MouseButton1Click:Connect(function() targetIndex = targetIndex - 1; updateTarget() end)
+    btnNext.MouseButton1Click:Connect(function() targetIndex = targetIndex + 1; updateTarget() end)
+    
+    -- Периодическое обновление списка на случай выхода игрока
+    task.spawn(function()
+        while task.wait(2) do
+            if _G.FlingTarget and not _G.FlingTarget.Parent then
+                updateTarget()
+            end
+        end
+    end)
+
+    holder.Parent = parent
+    updateTarget()
+end
+
 -- Добавляем контролы в mainFrame
 local y = 40
-createToggle(mainFrame, y, "Auto Farm", function(enabled)
-    _G.AutoFarm = enabled
-end); y = y + 35
-
-createToggle(mainFrame, y, "Fly", function(enabled)
-    _G.Fly = enabled
-    if enabled and LocalPlayer.Character then
-        -- подготовка
-        local char = LocalPlayer.Character
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChild("Humanoid")
-        if root and hum then
-            hum.PlatformStand = true
-        end
+createToggle(mainFrame, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 35
+createToggle(mainFrame, y, "Fly", function(state) 
+    _G.Fly = state 
+    if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.PlatformStand = true
     end
 end); y = y + 35
 
-createToggle(mainFrame, y, "Fling Player", function(enabled)
-    _G.Fling = enabled
-end); y = y + 35
+-- Noclip кнопка
+createToggle(mainFrame, y, "Noclip", function(state) _G.Noclip = state end); y = y + 35
+
+-- Target Selector
+createTargetSelector(mainFrame, y); y = y + 35
+
+-- Fling
+createToggle(mainFrame, y, "Target Fling", function(state) _G.Fling = state end); y = y + 35
 
 createValueControl(mainFrame, y, "WalkSpeed", 16, 200, 16, function(val)
     _G.WalkSpeed = val
@@ -195,7 +267,6 @@ createValueControl(mainFrame, y, "JumpPower", 50, 500, 50, function(val)
     end
 end); y = y + 35
 
--- ESP контрол (всегда включен)
 local espLabel = Instance.new("TextLabel", mainFrame)
 espLabel.Size = UDim2.new(1, -20, 0, 20)
 espLabel.Position = UDim2.new(0, 10, 0, y)
@@ -205,8 +276,70 @@ espLabel.Font = Enum.Font.SourceSansSemibold
 espLabel.TextSize = 13
 espLabel.BackgroundTransparency = 1
 
--- ===== Auto Farm (исправленный) =====
-_G.AutoFarm = false
+-- ===== Noclip Логика =====
+RunService.Stepped:Connect(function()
+    if _G.Noclip then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- ===== Целевой Fling (С защитой от вылета за карту) =====
+local WasFlinging = false
+RunService.Stepped:Connect(function()
+    if _G.Fling and _G.FlingTarget and _G.FlingTarget.Character then
+        local char = LocalPlayer.Character
+        local tChar = _G.FlingTarget.Character
+        if char and tChar then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local tRoot = tChar:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            
+            if root and tRoot and hum then
+                WasFlinging = true
+                -- Защита от полета за карту: если цель упала ниже -50, мы не следуем за ней
+                if tRoot.Position.Y > -50 then
+                    hum.PlatformStand = true
+                    
+                    -- Держимся на цели и бешено крутимся
+                    root.CFrame = tRoot.CFrame
+                    root.Velocity = Vector3.new(0, 0, 0) -- Убираем нашу скорость, чтобы нас не откинуло
+                    root.RotVelocity = Vector3.new(15000, 15000, 15000) -- Вращение для флинга цели
+                    
+                    -- Принудительный Noclip во время Fling, чтобы не застрять в стенах
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
+                else
+                    -- Цель упала за карту, останавливаемся
+                    hum.PlatformStand = false
+                    root.RotVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end
+    elseif WasFlinging then
+        -- Выключили флинг, возвращаем персонажа в норму
+        WasFlinging = false
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if hum and not _G.Fly then hum.PlatformStand = false end
+            if root then 
+                root.Velocity = Vector3.new(0, 0, 0)
+                root.RotVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+-- ===== Auto Farm =====
 RunService.RenderStepped:Connect(function()
     if not _G.AutoFarm then return end
     local char = LocalPlayer.Character
@@ -215,37 +348,27 @@ RunService.RenderStepped:Connect(function()
     if not root then return end
 
     local coins = {}
-    -- Поиск монет: все BasePart с именем Coin (включая MeshPart)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then
             table.insert(coins, obj)
         end
     end
-    
-    -- поиск в папках
     for _, folderName in ipairs({"Coins", "CoinContainer", "CoinFolder", "ServerCoins"}) do
         local folder = Workspace:FindFirstChild(folderName)
         if folder then
             for _, obj in ipairs(folder:GetDescendants()) do
-                if obj:IsA("BasePart") then
-                    table.insert(coins, obj)
-                end
+                if obj:IsA("BasePart") then table.insert(coins, obj) end
             end
         end
     end
-
-    -- Если монеты – модели с PrimaryPart
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and (obj.Name == "Coin" or obj:FindFirstChild("Coin")) then
             local prim = obj.PrimaryPart or obj:FindFirstChild("Coin") or obj:FindFirstChildOfClass("BasePart")
-            if prim then
-                table.insert(coins, prim)
-            end
+            if prim then table.insert(coins, prim) end
         end
     end
 
     if #coins > 0 then
-        -- сортируем по расстоянию
         table.sort(coins, function(a, b)
             return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude
         end)
@@ -253,7 +376,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ===== Fly (простая версия на CFrame) =====
+-- ===== Fly =====
 local flyConnection
 local function startFly()
     flyConnection = RunService.RenderStepped:Connect(function()
@@ -274,8 +397,8 @@ local function startFly()
         if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection -= Vector3.new(0, 1, 0) end
 
         if moveDirection.Magnitude > 0 then
-            root.CFrame = root.CFrame + moveDirection.Unit * 0.5 -- скорость полёта
-            root.Velocity = Vector3.new(0, 0, 0) -- убираем гравитацию
+            root.CFrame = root.CFrame + moveDirection.Unit * 0.5
+            root.Velocity = Vector3.new(0, 0, 0)
         else
             root.Velocity = Vector3.new(0, 0, 0)
         end
@@ -283,21 +406,8 @@ local function startFly()
 end
 startFly()
 
--- ===== Fling =====
-RunService.RenderStepped:Connect(function()
-    if not _G.Fling then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.Velocity = Vector3.new(math.random(-8000, 8000), math.random(6000, 10000), math.random(-8000, 8000))
-        root.RotVelocity = Vector3.new(math.random(-200, 200), math.random(-200, 200), math.random(-200, 200))
-    end
-end)
-
 -- ===== Role ESP =====
 local drawingCache = {}
-
 local function clearESP()
     for _, obj in ipairs(drawingCache) do
         if obj.box then obj.box:Remove() end
@@ -307,35 +417,25 @@ local function clearESP()
 end
 
 local function getRole(player)
-    -- Смотрим в Backpack и Character на предметы
     local char = player.Character
     if not char then return "Unknown" end
-    -- проверяем в детях персонажа
     for _, child in ipairs(char:GetChildren()) do
         if child:IsA("Tool") then
             local name = child.Name:lower()
-            if name:find("knife") or name:find("murder") then
-                return "Murderer"
-            elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then
-                return "Sheriff"
-            end
+            if name:find("knife") or name:find("murder") then return "Murderer"
+            elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
         end
     end
-    -- проверяем в Backpack
     local bp = player:FindFirstChild("Backpack")
     if bp then
         for _, child in ipairs(bp:GetChildren()) do
             if child:IsA("Tool") then
                 local name = child.Name:lower()
-                if name:find("knife") or name:find("murder") then
-                    return "Murderer"
-                elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then
-                    return "Sheriff"
-                end
+                if name:find("knife") or name:find("murder") then return "Murderer"
+                elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
             end
         end
     end
-    -- Innocent по умолчанию
     return "Innocent"
 end
 
@@ -355,19 +455,14 @@ local function createESP(target, role, color)
 
     local function update()
         local char = target.Character
-        if not char then
-            box.Visible = false; txt.Visible = false; return
-        end
+        if not char then box.Visible = false; txt.Visible = false; return end
         local root = char:FindFirstChild("HumanoidRootPart")
         local head = char:FindFirstChild("Head")
-        if not root or not head then
-            box.Visible = false; txt.Visible = false; return
-        end
+        if not root or not head then box.Visible = false; txt.Visible = false; return end
         local cam = Workspace.CurrentCamera
         local pos, onScreen = cam:WorldToViewportPoint(root.Position)
         if onScreen then
             local dist = (cam.CFrame.Position - root.Position).Magnitude
-            local scale = math.clamp(60 / dist, 0.3, 1.5)
             local headPos = cam:WorldToViewportPoint(head.Position)
             local height = (pos - headPos).Magnitude * 1.2
             local width = height * 0.6
@@ -388,7 +483,6 @@ end
 
 local roleESPfunctions = {}
 RunService.RenderStepped:Connect(function()
-    -- удаляем неактуальные
     local newESP = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -396,31 +490,20 @@ RunService.RenderStepped:Connect(function()
                 newESP[plr] = roleESPfunctions[plr]
             else
                 local role = getRole(plr)
-                local color
-                if role == "Murderer" then
-                    color = Color3.new(1, 0.2, 0.2)
-                elseif role == "Sheriff" then
-                    color = Color3.new(0.3, 0.6, 1)
-                else
-                    color = Color3.new(0.4, 1, 0.4)
-                end
-                local updateFunc = createESP(plr, role, color)
-                newESP[plr] = updateFunc
+                local color = Color3.new(0.4, 1, 0.4)
+                if role == "Murderer" then color = Color3.new(1, 0.2, 0.2)
+                elseif role == "Sheriff" then color = Color3.new(0.3, 0.6, 1) end
+                newESP[plr] = createESP(plr, role, color)
             end
         end
     end
     roleESPfunctions = newESP
-    -- обновляем позиции
-    for plr, func in pairs(roleESPfunctions) do
-        func()
-    end
+    for plr, func in pairs(roleESPfunctions) do func() end
 end)
 
--- очистка при перезаходе персонажа
 LocalPlayer.CharacterAdded:Connect(function()
     clearESP()
     roleESPfunctions = {}
 end)
 
--- подсказка
-print("MM2 Full Menu активирован. Перетаскивай окно за заголовок.")
+print("MM2 Full Menu v2 активирован.")
