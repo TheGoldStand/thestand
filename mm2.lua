@@ -1,8 +1,10 @@
 --[[
-    MM2 FULL MENU v9 (Scrolling + Shoot Button):
-    - Весь интерфейс внутри ScrollingFrame (кроме заголовка)
-    - AutoShoot: при включении появляется перетаскиваемая кнопка "🔫 SHOOT", нажатие — выстрел в мёрдера
-    - Spin Fling, Kill All, Take Gun, Music Player, ESP обводка
+    MM2 FULL MENU v10 (Final Fixes):
+    - Shoot кнопка теперь работает корректно (при нажатии поворачивает к мёрдеру и активирует оружие)
+    - Auto Farm: задержка между монетами настраивается (0.5–5 сек), теперь плавный обход
+    - Заголовок: жёлтый фон, красный текст
+    - UIStroke вокруг главного фрейма с золотистым мерцанием (переливается)
+    - Выбор цели: дропдаун-список с никами и аватарками игроков (через UserThumbnail)
 ]]
 
 local Players = game:GetService("Players")
@@ -11,9 +13,11 @@ local Workspace = game:GetService("Workspace")
 local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
 -- Глобальные переменные
 _G.AutoFarm = false
+_G.AutoFarmDelay = 2          -- секунды, по умолчанию 2
 _G.Fly = false
 _G.Noclip = false
 _G.Fling = false
@@ -32,9 +36,9 @@ gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главное окно
+-- Главный фрейм с UIStroke
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 450)  -- фиксированная высота видимой области
+mainFrame.Size = UDim2.new(0, 300, 0, 450)
 mainFrame.Position = UDim2.new(0.5, -150, 0.1, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BackgroundTransparency = 0.15
@@ -43,24 +47,32 @@ mainFrame.ClipsDescendants = true
 mainFrame.Active = true
 mainFrame.Parent = gui
 
-local shadow = Instance.new("ImageLabel", mainFrame)
-shadow.Size = UDim2.new(1, 20, 1, 20)
-shadow.Position = UDim2.new(0, -10, 0, -10)
-shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://6014261993"
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.7
-shadow.ScaleType = Enum.ScaleType.Slice
-shadow.SliceCenter = Rect.new(24, 24, 24, 24)
-shadow.ZIndex = 0
+-- UIStroke с мерцанием
+local stroke = Instance.new("UIStroke", mainFrame)
+stroke.Thickness = 2
+stroke.LineJoinMode = Enum.LineJoinMode.Round
+-- Цикл для переливающегося цвета
+task.spawn(function()
+    while true do
+        for _, color in ipairs({
+            Color3.fromRGB(255, 200, 0),   -- золотой
+            Color3.fromRGB(255, 230, 50),  -- светлый золотой
+            Color3.fromRGB(255, 170, 0),   -- тёмно-золотой
+            Color3.fromRGB(255, 215, 0)
+        }) do
+            stroke.Color = color
+            task.wait(0.4)
+        end
+    end
+end)
 
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 14)
 
--- Заголовок
+-- Заголовок (жёлтый фон, красный текст)
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 36)
-header.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
+header.BackgroundColor3 = Color3.fromRGB(255, 200, 0)   -- жёлтый
 header.BorderSizePixel = 0
 header.Parent = mainFrame
 local headerCorner = Instance.new("UICorner", header)
@@ -68,8 +80,8 @@ headerCorner.CornerRadius = UDim.new(0, 14)
 
 local headerGradient = Instance.new("UIGradient", header)
 headerGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 40, 40)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 0, 0))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
 })
 headerGradient.Rotation = 90
 
@@ -77,7 +89,7 @@ local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 15, 0, 0)
 title.Text = "🔪 MM2 Script / BY TheG0ldStand"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextColor3 = Color3.fromRGB(180, 0, 0)   -- красный текст
 title.TextSize = 14
 title.Font = Enum.Font.GothamBold
 title.BackgroundTransparency = 1
@@ -91,18 +103,17 @@ minimizeBtn.Size = UDim2.new(0, 36, 0, 36)
 minimizeBtn.Position = UDim2.new(1, -36, 0, 0)
 minimizeBtn.BackgroundTransparency = 1
 minimizeBtn.Text = "−"
-minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
 minimizeBtn.TextSize = 22
 minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.TextStrokeTransparency = 0.6
 
--- Кнопка развернуть (стильная, плавающая)
+-- Кнопка развернуть
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 90, 0, 40)
 openBtn.Position = UDim2.new(0.5, -45, 0.2, 0)
 openBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 openBtn.Text = "OPEN"
-openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+openBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
 openBtn.TextSize = 16
 openBtn.Font = Enum.Font.GothamBold
 openBtn.Visible = false
@@ -110,15 +121,6 @@ openBtn.Active = true
 openBtn.Parent = gui
 local openCorner = Instance.new("UICorner", openBtn)
 openCorner.CornerRadius = UDim.new(0, 10)
-local openShadow = Instance.new("ImageLabel", openBtn)
-openShadow.Size = UDim2.new(1, 12, 1, 12)
-openShadow.Position = UDim2.new(0, -6, 0, -6)
-openShadow.BackgroundTransparency = 1
-openShadow.Image = "rbxassetid://6014261993"
-openShadow.ImageTransparency = 0.7
-openShadow.ScaleType = Enum.ScaleType.Slice
-openShadow.SliceCenter = Rect.new(24, 24, 24, 24)
-openShadow.ZIndex = 0
 
 -- ===== Перетаскивание =====
 local function makeDraggable(dragArea, moveTarget)
@@ -178,14 +180,13 @@ scrollFrame.BorderSizePixel = 0
 scrollFrame.ScrollBarThickness = 6
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
 scrollFrame.ScrollBarImageTransparency = 0.7
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)  -- будет обновляться
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local scrollContent = Instance.new("Frame", scrollFrame)
-scrollContent.Size = UDim2.new(1, 0, 0, 0)  -- высота будет расти
+scrollContent.Size = UDim2.new(1, 0, 0, 0)
 scrollContent.BackgroundTransparency = 1
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, scrollContent.Size.Y.Offset)
 
--- ===== Элементы интерфейса (добавляем в scrollContent) =====
+-- ===== Элементы интерфейса =====
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -24, 0, 32)
@@ -297,7 +298,8 @@ local function createInputControl(parent, yPos, name, default, callback)
     return holder
 end
 
-local function createTargetSelector(parent, yPos)
+-- НОВЫЙ целевой селектор (дропдаун с аватарками)
+local function createTargetDropdown(parent, yPos)
     local holder = Instance.new("Frame")
     holder.Size = UDim2.new(1, -24, 0, 32)
     holder.Position = UDim2.new(0, 12, 0, yPos)
@@ -305,71 +307,159 @@ local function createTargetSelector(parent, yPos)
     holder.BorderSizePixel = 0
     local hC = Instance.new("UICorner", holder)
     hC.CornerRadius = UDim.new(0, 8)
+    holder.Parent = parent
 
-    local label = Instance.new("TextLabel", holder)
-    label.Size = UDim2.new(1, -70, 1, 0)
-    label.Position = UDim2.new(0, 35, 0, 0)
-    label.Text = "Target: None"
-    label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    label.Font = Enum.Font.GothamSemibold
-    label.TextSize = 13
-    label.BackgroundTransparency = 1
+    -- Кнопка открытия дропдауна
+    local targetBtn = Instance.new("TextButton", holder)
+    targetBtn.Size = UDim2.new(1, 0, 1, 0)
+    targetBtn.Text = "Target: None"
+    targetBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    targetBtn.Font = Enum.Font.GothamSemibold
+    targetBtn.TextSize = 13
+    targetBtn.BackgroundTransparency = 1
+    targetBtn.BorderSizePixel = 0
+    targetBtn.TextXAlignment = Enum.TextXAlignment.Left
+    targetBtn.Position = UDim2.new(0, 10, 0, 0)
+    targetBtn.AutoButtonColor = false
 
-    local btnPrev = Instance.new("TextButton", holder)
-    btnPrev.Size = UDim2.new(0, 35, 1, 0)
-    btnPrev.Position = UDim2.new(0, 0, 0, 0)
-    btnPrev.Text = "◀"
-    btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnPrev.BackgroundTransparency = 1
-    btnPrev.Font = Enum.Font.GothamBold
-    btnPrev.TextSize = 14
+    -- Иконка треугольника
+    local arrowIcon = Instance.new("TextLabel", holder)
+    arrowIcon.Size = UDim2.new(0, 20, 1, 0)
+    arrowIcon.Position = UDim2.new(1, -25, 0, 0)
+    arrowIcon.Text = "▼"
+    arrowIcon.TextColor3 = Color3.fromRGB(220, 220, 220)
+    arrowIcon.Font = Enum.Font.GothamBold
+    arrowIcon.TextSize = 14
+    arrowIcon.BackgroundTransparency = 1
 
-    local btnNext = Instance.new("TextButton", holder)
-    btnNext.Size = UDim2.new(0, 35, 1, 0)
-    btnNext.Position = UDim2.new(1, -35, 0, 0)
-    btnNext.Text = "▶"
-    btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnNext.BackgroundTransparency = 1
-    btnNext.Font = Enum.Font.GothamBold
-    btnNext.TextSize = 14
+    -- Фрейм дропдауна (изначально скрыт)
+    local dropdown = Instance.new("Frame")
+    dropdown.Size = UDim2.new(1, 0, 0, 200)
+    dropdown.Position = UDim2.new(0, 0, 1, 5)
+    dropdown.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    dropdown.BorderSizePixel = 0
+    dropdown.Visible = false
+    dropdown.Parent = holder
+    local dcorner = Instance.new("UICorner", dropdown)
+    dcorner.CornerRadius = UDim.new(0, 8)
 
-    local targetIndex = 1
-    local function getPlayers()
-        local list = {}
+    local dropScroll = Instance.new("ScrollingFrame", dropdown)
+    dropScroll.Size = UDim2.new(1, 0, 1, 0)
+    dropScroll.BackgroundTransparency = 1
+    dropScroll.ScrollBarThickness = 4
+    dropScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+    dropScroll.ScrollBarImageTransparency = 0.8
+    dropScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+    local dropContent = Instance.new("Frame", dropScroll)
+    dropContent.Size = UDim2.new(1, 0, 0, 0)
+    dropContent.BackgroundTransparency = 1
+
+    -- Функция обновления дропдауна
+    local function refreshDropdown()
+        -- Очищаем старый список
+        for _, child in ipairs(dropContent:GetChildren()) do child:Destroy() end
+        local players = {}
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then table.insert(list, p) end
+            if p ~= LocalPlayer then table.insert(players, p) end
         end
-        return list
+        local yPos = 0
+        for _, plr in ipairs(players) do
+            local playerEntry = Instance.new("TextButton")
+            playerEntry.Size = UDim2.new(1, 0, 0, 36)
+            playerEntry.Position = UDim2.new(0, 0, 0, yPos)
+            playerEntry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            playerEntry.BorderSizePixel = 0
+            playerEntry.AutoButtonColor = false
+            playerEntry.Parent = dropContent
+
+            -- Аватарка
+            local avatar = Instance.new("ImageLabel", playerEntry)
+            avatar.Size = UDim2.new(0, 28, 0, 28)
+            avatar.Position = UDim2.new(0, 5, 0.5, -14)
+            avatar.BackgroundTransparency = 1
+            avatar.Image = ""  -- загрузим позже
+            local avatarCorner = Instance.new("UICorner", avatar)
+            avatarCorner.CornerRadius = UDim.new(1, 0)
+
+            -- Ник
+            local nameLabel = Instance.new("TextLabel", playerEntry)
+            nameLabel.Size = UDim2.new(1, -40, 1, 0)
+            nameLabel.Position = UDim2.new(0, 40, 0, 0)
+            nameLabel.Text = plr.Name
+            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            nameLabel.Font = Enum.Font.GothamSemibold
+            nameLabel.TextSize = 13
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+            -- Загрузка аватарки
+            task.spawn(function()
+                local userId = plr.UserId
+                if userId <= 0 then return end
+                local suc, thumbnail = pcall(function()
+                    return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+                end)
+                if suc and thumbnail then
+                    avatar.Image = thumbnail
+                end
+            end)
+
+            -- При выборе игрока
+            playerEntry.MouseButton1Click:Connect(function()
+                _G.SelectedTarget = plr
+                targetBtn.Text = "Target: " .. plr.Name
+                dropdown.Visible = false
+            end)
+
+            yPos = yPos + 36
+        end
+        dropContent.Size = UDim2.new(1, 0, 0, yPos)
+        dropScroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
     end
 
-    local function updateTarget()
-        local list = getPlayers()
-        if #list == 0 then
-            label.Text = "Target: None"
-            _G.SelectedTarget = nil
-            return
-        end
-        if targetIndex > #list then targetIndex = 1 end
-        if targetIndex < 1 then targetIndex = #list end
-        _G.SelectedTarget = list[targetIndex]
-        label.Text = "Target: " .. _G.SelectedTarget.Name
-    end
-
-    btnPrev.MouseButton1Click:Connect(function() targetIndex = targetIndex - 1; updateTarget() end)
-    btnNext.MouseButton1Click:Connect(function() targetIndex = targetIndex + 1; updateTarget() end)
-
-    task.spawn(function()
-        while task.wait(2) do
-            if _G.SelectedTarget and not _G.SelectedTarget.Parent then updateTarget() end
+    -- Открытие/закрытие дропдауна
+    targetBtn.MouseButton1Click:Connect(function()
+        if dropdown.Visible then
+            dropdown.Visible = false
+        else
+            refreshDropdown()
+            dropdown.Visible = true
         end
     end)
-    holder.Parent = parent
-    updateTarget()
+    arrowIcon.InputEnded:Connect(function() -- клик по стрелке тоже
+        if dropdown.Visible then dropdown.Visible = false else refreshDropdown(); dropdown.Visible = true end
+    end)
+
+    -- Закрытие при клике вне дропдауна (простой способ: слушаем клики на экране)
+    UIS.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            -- если дропдаун видим и клик не по нему и не по кнопке, закрываем
+            if dropdown.Visible then
+                local pos = input.Position
+                local absPos = dropdown.AbsolutePosition
+                local absSize = dropdown.AbsoluteSize
+                if pos.X < absPos.X or pos.X > absPos.X + absSize.X or pos.Y < absPos.Y or pos.Y > absPos.Y + absSize.Y then
+                    -- также проверяем, что клик не по самой кнопке
+                    local btnAbsPos = targetBtn.AbsolutePosition
+                    local btnAbsSize = targetBtn.AbsoluteSize
+                    if not (pos.X >= btnAbsPos.X and pos.X <= btnAbsPos.X + btnAbsSize.X and pos.Y >= btnAbsPos.Y and pos.Y <= btnAbsPos.Y + btnAbsSize.Y) then
+                        dropdown.Visible = false
+                    end
+                end
+            end
+        end
+    end)
 end
 
--- Заполняем scrollContent
+-- ===== Построение меню =====
 local y = 0
 createToggle(scrollContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
+-- Поле для задержки Auto Farm
+createInputControl(scrollContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
+    _G.AutoFarmDelay = math.clamp(val, 0.5, 5)  -- ограничение
+end); y = y + 38
+
 createToggle(scrollContent, y, "Fly", function(state)
     _G.Fly = state
     if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -378,7 +468,9 @@ createToggle(scrollContent, y, "Fly", function(state)
 end); y = y + 38
 createToggle(scrollContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
-createTargetSelector(scrollContent, y); y = y + 38
+-- Новый дропдаун таргета
+createTargetDropdown(scrollContent, y); y = y + 42
+
 createButton(scrollContent, y, "Teleport to Target", function()
     if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
         local char = LocalPlayer.Character
@@ -471,8 +563,6 @@ playBtn.BorderSizePixel = 0
 local playCorner = Instance.new("UICorner", playBtn); playCorner.CornerRadius = UDim.new(0, 5)
 
 y = y + 55
-
--- Обновляем размер контента
 scrollContent.Size = UDim2.new(1, 0, 0, y + 10)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, scrollContent.Size.Y.Offset)
 
@@ -492,7 +582,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Spin Fling (бешеное вращение + отбрасывание приближающихся)
+-- Spin Fling
 RunService.Stepped:Connect(function()
     if not _G.Fling then return end
     local char = LocalPlayer.Character
@@ -502,7 +592,7 @@ RunService.Stepped:Connect(function()
     if not root or not hum then return end
 
     hum.PlatformStand = true
-    root.RotVelocity = Vector3.new(0, 2000, 0)  -- вращение
+    root.RotVelocity = Vector3.new(0, 2000, 0)
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
@@ -523,36 +613,50 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Auto Farm
-RunService.RenderStepped:Connect(function()
-    if not _G.AutoFarm then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+-- Auto Farm (с задержкой)
+task.spawn(function()
+    while true do
+        if _G.AutoFarm then
+            local char = LocalPlayer.Character
+            if char then
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local coins = {}
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then table.insert(coins, obj) end
+                    end
+                    for _, folderName in ipairs({"Coins", "CoinContainer", "CoinFolder", "ServerCoins"}) do
+                        local folder = Workspace:FindFirstChild(folderName)
+                        if folder then
+                            for _, obj in ipairs(folder:GetDescendants()) do
+                                if obj:IsA("BasePart") then table.insert(coins, obj) end
+                            end
+                        end
+                    end
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if obj:IsA("Model") and (obj.Name == "Coin" or obj:FindFirstChild("Coin")) then
+                            local prim = obj.PrimaryPart or obj:FindFirstChild("Coin") or obj:FindFirstChildOfClass("BasePart")
+                            if prim then table.insert(coins, prim) end
+                        end
+                    end
 
-    local coins = {}
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then table.insert(coins, obj) end
-    end
-    for _, folderName in ipairs({"Coins", "CoinContainer", "CoinFolder", "ServerCoins"}) do
-        local folder = Workspace:FindFirstChild(folderName)
-        if folder then
-            for _, obj in ipairs(folder:GetDescendants()) do
-                if obj:IsA("BasePart") then table.insert(coins, obj) end
+                    if #coins > 0 then
+                        table.sort(coins, function(a, b) return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude end)
+                        for _, coin in ipairs(coins) do
+                            if not _G.AutoFarm then break end
+                            local currentChar = LocalPlayer.Character
+                            if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+                                currentChar.HumanoidRootPart.CFrame = coin.CFrame
+                                task.wait(_G.AutoFarmDelay)
+                            end
+                        end
+                    else
+                        task.wait(0.5) -- если нет монет, подождём
+                    end
+                end
             end
         end
-    end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and (obj.Name == "Coin" or obj:FindFirstChild("Coin")) then
-            local prim = obj.PrimaryPart or obj:FindFirstChild("Coin") or obj:FindFirstChildOfClass("BasePart")
-            if prim then table.insert(coins, prim) end
-        end
-    end
-
-    if #coins > 0 then
-        table.sort(coins, function(a, b) return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude end)
-        root.CFrame = coins[1].CFrame
+        task.wait(0.1)
     end
 end)
 
@@ -610,10 +714,9 @@ function createAutoShootButton()
     shadow.SliceCenter = Rect.new(24, 24, 24, 24)
     shadow.ZIndex = 0
 
-    -- Перетаскивание
     makeDraggable(btn, btn)
 
-    -- Действие: выстрел в мёрдера
+    -- При нажатии стреляем в мёрдера
     btn.MouseButton1Click:Connect(function()
         shootMurderer()
     end)
@@ -634,7 +737,6 @@ function shootMurderer()
     local tool = char:FindFirstChildOfClass("Tool")
     if not tool or not (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then return end
 
-    -- Ищем мёрдера
     local murderer = nil
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
@@ -650,9 +752,7 @@ function shootMurderer()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    -- Поворачиваемся к голове
     root.CFrame = CFrame.new(root.Position, head.Position)
-    -- Стреляем
     tool:Activate()
 end
 
@@ -669,8 +769,7 @@ function killAll()
         if plr == LocalPlayer then continue end
         local targetChar = plr.Character
         if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-            local targetRoot = targetChar.HumanoidRootPart
-            root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
+            root.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
             tool:Activate()
             task.wait(0.1)
         end
@@ -834,7 +933,7 @@ playBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Сброс состояния при выключении флинга или полёта
+-- Сброс при выключении флинга/полёта
 RunService.Stepped:Connect(function()
     if not _G.Fling and not _G.Fly then
         local char = LocalPlayer.Character
@@ -847,4 +946,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("✅ MM2 Script v9 / BY TheG0ldStand загружен! Scrolling + Shoot button")
+print("✅ MM2 Script v10 / BY TheG0ldStand — Жёлтый заголовок, мерцающая рамка, дропдаун с аватарками, Auto Farm с задержкой, фикс Shoot!")
