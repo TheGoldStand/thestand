@@ -1,9 +1,9 @@
 --[[
-    MM2 FULL MENU: AutoFarm, Fly (Mobile), Teleport, Fling, Noclip, Speed, Jump, Role ESP
-    Для Delta Executor
+    MM2 FULL MENU v6: AutoFarm, Fly (Mobile), Teleport, Fling, Noclip, Speed, Jump, Role ESP, Audio Player, Jerk
     Исправления:
-    - Fling: телепорт к цели, вращение с огромной скоростью, отбрасывание цели; после выключения возврат на твёрдую поверхность
-    - ESP: возможность включения/выключения, автоматическое обновление ролей каждую секунду
+    - ESP: исправлено зависание надписей (Visible=false перед Remove, pcall при обновлении)
+    - Добавлен Music Player: ввод ID песни и кнопка Play
+    - Добавлен Jerk (тряска персонажа)
 --]]
 
 local Players = game:GetService("Players")
@@ -13,26 +13,26 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Глобальные переменные для функций
+-- Глобальные переменные
 _G.AutoFarm = false
 _G.Fly = false
 _G.Noclip = false
 _G.Fling = false
-_G.ESPEnabled = false        -- ESP выключен по умолчанию
+_G.ESPEnabled = false
 _G.SelectedTarget = nil
 _G.WalkSpeed = 16
 _G.JumpPower = 50
-_G.ESPRefresh = false        -- флаг для принудительного обновления ролей
+_G.Jerk = false
+_G.ESPRefresh = false
 
--- ===== GUI создание =====
+-- GUI
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
--- Главный фрейм
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -130, 0.2, 0)
+mainFrame.Size = UDim2.new(0, 280, 0, 500)  -- увеличил высоту под новые элементы
+mainFrame.Position = UDim2.new(0.5, -140, 0.15, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
@@ -42,17 +42,15 @@ mainFrame.Parent = gui
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 10)
 
--- Заголовок (Красный)
+-- Заголовок
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 30)
 header.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 header.BorderSizePixel = 0
 header.Parent = mainFrame
-
 local headerCorner = Instance.new("UICorner", header)
 headerCorner.CornerRadius = UDim.new(0, 10)
 
--- Название (Желтый)
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
@@ -63,7 +61,6 @@ title.Font = Enum.Font.SourceSansBold
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Кнопка скрыть/свернуть [-]
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -73,7 +70,6 @@ minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 minimizeBtn.TextSize = 20
 minimizeBtn.Font = Enum.Font.SourceSansBold
 
--- Кнопка развернуть (Желтая, изначально скрыта)
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 80, 0, 40)
 openBtn.Position = UDim2.new(0.5, -40, 0.2, 0)
@@ -85,16 +81,14 @@ openBtn.Font = Enum.Font.SourceSansBold
 openBtn.Visible = false
 openBtn.Active = true
 openBtn.Parent = gui
-
 local openCorner = Instance.new("UICorner", openBtn)
 openCorner.CornerRadius = UDim.new(0, 8)
 
--- ===== Система перетаскивания (Универсальная) =====
+-- Перетаскивание
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local dragStart = nil
     local startPos = nil
-
     dragArea.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
@@ -102,13 +96,11 @@ local function makeDraggable(dragArea, moveTarget)
             startPos = moveTarget.Position
         end
     end)
-
     UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-
     UIS.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
@@ -116,18 +108,15 @@ local function makeDraggable(dragArea, moveTarget)
         end
     end)
 end
-
 makeDraggable(header, mainFrame)
 makeDraggable(openBtn, openBtn)
 
--- Логика скрытия
 minimizeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     openBtn.Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset + 90, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
     openBtn.Visible = true
 end)
 
--- Логика разворачивания
 local clickStartPos
 openBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -144,7 +133,7 @@ openBtn.InputEnded:Connect(function(input)
     end
 end)
 
--- ===== Элементы интерфейса =====
+-- Функции создания элементов
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 30)
@@ -156,7 +145,6 @@ local function createToggle(parent, yPos, text, callback)
     btn.TextSize = 13
     btn.BorderSizePixel = 0
     local btnCorner = Instance.new("UICorner", btn); btnCorner.CornerRadius = UDim.new(0, 6)
-
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
@@ -290,18 +278,17 @@ local function createTargetSelector(parent, yPos)
     updateTarget()
 end
 
--- Добавляем элементы в главное окно
+-- ======== Построение интерфейса ========
 local y = 40
 createToggle(mainFrame, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 35
-createToggle(mainFrame, y, "Fly", function(state) 
-    _G.Fly = state 
+createToggle(mainFrame, y, "Fly", function(state)
+    _G.Fly = state
     if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.PlatformStand = true
     end
 end); y = y + 35
 createToggle(mainFrame, y, "Noclip", function(state) _G.Noclip = state end); y = y + 35
 
--- Цели и Телепорт
 createTargetSelector(mainFrame, y); y = y + 35
 createButton(mainFrame, y, "Teleport to Target", function()
     if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
@@ -312,10 +299,11 @@ createButton(mainFrame, y, "Teleport to Target", function()
     end
 end); y = y + 35
 
-createToggle(mainFrame, y, "Target Fling", function(state) 
+createToggle(mainFrame, y, "Target Fling", function(state)
     _G.Fling = state
-    if not state then
-        -- При выключении сбросим флаг активации
+    if state then
+        _G.FlingJustActivated = true  -- активируем однократный толчок
+    else
         _G.FlingJustActivated = false
     end
 end); y = y + 35
@@ -334,16 +322,63 @@ createInputControl(mainFrame, y, "JumpPower", 50, function(val)
     end
 end); y = y + 35
 
-createToggle(mainFrame, y, "Role ESP", function(state) 
+createToggle(mainFrame, y, "Role ESP", function(state)
     _G.ESPEnabled = state
     if not state then
-        -- При выключении удаляем все ESP
         clearESP()
         roleESPfunctions = {}
     end
 end); y = y + 35
 
--- ===== Логика скриптов =====
+createToggle(mainFrame, y, "Jerk", function(state)
+    _G.Jerk = state
+end); y = y + 35
+
+-- Music Player
+local musicFrame = Instance.new("Frame")
+musicFrame.Size = UDim2.new(1, -20, 0, 60)
+musicFrame.Position = UDim2.new(0, 10, 0, y)
+musicFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+local mCorner = Instance.new("UICorner", musicFrame); mCorner.CornerRadius = UDim.new(0, 6)
+musicFrame.Parent = mainFrame
+
+local musicLabel = Instance.new("TextLabel", musicFrame)
+musicLabel.Size = UDim2.new(1, 0, 0, 20)
+musicLabel.Position = UDim2.new(0, 5, 0, 0)
+musicLabel.Text = "Music Player (ID)"
+musicLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+musicLabel.Font = Enum.Font.SourceSansBold
+musicLabel.TextSize = 12
+musicLabel.BackgroundTransparency = 1
+
+local musicInput = Instance.new("TextBox", musicFrame)
+musicInput.Size = UDim2.new(0, 150, 0, 20)
+musicInput.Position = UDim2.new(0, 10, 0, 25)
+musicInput.Text = "1837897837"  -- пример ID
+musicInput.TextColor3 = Color3.new(1, 1, 1)
+musicInput.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+musicInput.Font = Enum.Font.SourceSansBold
+musicInput.TextSize = 12
+
+local playBtn = Instance.new("TextButton", musicFrame)
+playBtn.Size = UDim2.new(0, 50, 0, 20)
+playBtn.Position = UDim2.new(0, 170, 0, 25)
+playBtn.Text = "Play"
+playBtn.TextColor3 = Color3.new(1, 1, 1)
+playBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+playBtn.Font = Enum.Font.SourceSansBold
+playBtn.TextSize = 12
+local playCorner = Instance.new("UICorner", playBtn); playCorner.CornerRadius = UDim.new(0, 4)
+
+local stopBtn = Instance.new("TextButton", musicFrame)
+stopBtn.Size = UDim2.new(0, 50, 0, 20)
+stopBtn.Position = UDim2.new(0, 170, 0, 25)  -- будем перекрывать Play? Расположим рядом: Play слева, Stop справа.
+-- Переделаем расположение: уменьшим Play до 50, Stop ещё 50, но тогда не влезет. Сделаем один Toggle Play/Stop.
+-- Упростим: кнопка Play при повторном нажатии останавливает.
+-- Для этого будем хранить текущий звук.
+y = y + 65
+
+-- ======== Логика функций ========
 
 -- Noclip
 RunService.Stepped:Connect(function()
@@ -359,23 +394,23 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Fling (улучшенный)
-_G.FlingJustActivated = false  -- флаг для однократного толчка
+-- Улучшенный Fling
+_G.FlingJustActivated = false
 local WasFlinging = false
 
--- Функция поиска твёрдой поверхности под позицией
 local function findGround(position)
     local rayOrigin = position + Vector3.new(0, 10, 0)
     local rayDirection = Vector3.new(0, -500, 0)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character or game:GetService("Players").LocalPlayer.CharacterAdded:Wait()}
-    
+    if LocalPlayer.Character then
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    end
     local result = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
     if result then
-        return result.Position + Vector3.new(0, 3, 0)  -- немного выше земли
+        return result.Position + Vector3.new(0, 3, 0)
     else
-        return position + Vector3.new(0, 0, 0)  -- если не нашли, вернуть исходную с Y = 0?
+        return position
     end
 end
 
@@ -391,17 +426,13 @@ RunService.Stepped:Connect(function()
                 WasFlinging = true
                 if tRoot.Position.Y > -50 then
                     hum.PlatformStand = true
-                    root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 2)  -- телепорт чуть впереди цели
+                    root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 2)
                     root.Velocity = Vector3.new(0, 0, 0)
                     root.RotVelocity = Vector3.new(15000, 15000, 15000)
-
-                    -- Однократный мощный толчок цели при активации
                     if _G.FlingJustActivated then
                         tRoot.Velocity = Vector3.new(math.random(-2000, 2000), 5000, math.random(-2000, 2000))
                         _G.FlingJustActivated = false
                     end
-
-                    -- Отключаем коллизии нашего персонажа, чтобы не мешать
                     for _, part in ipairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then part.CanCollide = false end
                     end
@@ -419,7 +450,6 @@ RunService.Stepped:Connect(function()
             local root = char:FindFirstChild("HumanoidRootPart")
             if hum and not _G.Fly then hum.PlatformStand = false end
             if root then
-                -- Возвращаем на твёрдую поверхность
                 local groundPos = findGround(root.Position)
                 root.CFrame = CFrame.new(groundPos)
                 root.Velocity = Vector3.new(0, 0, 0)
@@ -475,7 +505,6 @@ RunService.RenderStepped:Connect(function()
 
     local moveVector = PlayerModule:GetControls():GetMoveVector()
     local moveDirection = Vector3.new()
-
     if moveVector.Magnitude > 0 then
         moveDirection = (Camera.CFrame.RightVector * moveVector.X) + (Camera.CFrame.LookVector * -moveVector.Z)
     end
@@ -490,12 +519,18 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Role ESP
+-- Role ESP (исправлено)
 local drawingCache = {}
 local function clearESP()
     for _, obj in ipairs(drawingCache) do
-        if obj.box then obj.box:Remove() end
-        if obj.text then obj.text:Remove() end
+        if obj.box then
+            obj.box.Visible = false
+            obj.box:Remove()
+        end
+        if obj.text then
+            obj.text.Visible = false
+            obj.text:Remove()
+        end
     end
     drawingCache = {}
 end
@@ -539,26 +574,28 @@ local function createESP(target, role, color)
     txt.Visible = false
 
     local function update()
-        local char = target.Character
-        if not char then box.Visible = false; txt.Visible = false; return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local head = char:FindFirstChild("Head")
-        if not root or not head then box.Visible = false; txt.Visible = false; return end
-        local cam = Workspace.CurrentCamera
-        local pos, onScreen = cam:WorldToViewportPoint(root.Position)
-        if onScreen then
-            local headPos = cam:WorldToViewportPoint(head.Position)
-            local height = (pos - headPos).Magnitude * 1.2
-            local width = height * 0.6
-            box.Size = Vector2.new(width, height)
-            box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
-            box.Visible = true
-            txt.Position = Vector2.new(pos.X, pos.Y - height/2 - 14)
-            txt.Text = role .. " | " .. target.Name
-            txt.Visible = true
-        else
-            box.Visible = false; txt.Visible = false
-        end
+        pcall(function()
+            local char = target.Character
+            if not char then box.Visible = false; txt.Visible = false; return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head")
+            if not root or not head then box.Visible = false; txt.Visible = false; return end
+            local cam = Workspace.CurrentCamera
+            local pos, onScreen = cam:WorldToViewportPoint(root.Position)
+            if onScreen then
+                local headPos = cam:WorldToViewportPoint(head.Position)
+                local height = (pos - headPos).Magnitude * 1.2
+                local width = height * 0.6
+                box.Size = Vector2.new(width, height)
+                box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+                box.Visible = true
+                txt.Position = Vector2.new(pos.X, pos.Y - height/2 - 14)
+                txt.Text = role .. " | " .. target.Name
+                txt.Visible = true
+            else
+                box.Visible = false; txt.Visible = false
+            end
+        end)
     end
 
     table.insert(drawingCache, {box = box, txt = txt, update = update})
@@ -567,7 +604,7 @@ end
 
 local roleESPfunctions = {}
 
--- Цикл обновления ролей каждую секунду
+-- Обновление ролей раз в секунду
 task.spawn(function()
     while true do
         if _G.ESPEnabled then
@@ -579,14 +616,11 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if not _G.ESPEnabled then return end
-
-    -- Если флаг обновления, сбрасываем весь ESP и создаём заново
     if _G.ESPRefresh then
         _G.ESPRefresh = false
         clearESP()
         roleESPfunctions = {}
     end
-
     local newESP = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -602,7 +636,9 @@ RunService.RenderStepped:Connect(function()
         end
     end
     roleESPfunctions = newESP
-    for plr, func in pairs(roleESPfunctions) do func() end
+    for plr, func in pairs(roleESPfunctions) do
+        func()
+    end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -610,4 +646,48 @@ LocalPlayer.CharacterAdded:Connect(function()
     roleESPfunctions = {}
 end)
 
-print("MM2 Full Menu v5 (Fling fix, ESP toggle + auto-refresh) загружен!")
+-- Music Player
+local currentSound = nil
+playBtn.MouseButton1Click:Connect(function()
+    local id = tonumber(musicInput.Text)
+    if not id then return end
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+    end
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. id
+    sound.Volume = 5
+    sound.Parent = game:GetService("Players").LocalPlayer.PlayerGui  -- родитель для локального звука
+    sound:Play()
+    currentSound = sound
+    playBtn.Text = "Stop"
+    -- Остановка при повторном нажатии
+    local conn
+    conn = playBtn.MouseButton1Click:Connect(function()
+        if currentSound then
+            currentSound:Stop()
+            currentSound:Destroy()
+            currentSound = nil
+            playBtn.Text = "Play"
+            conn:Disconnect()
+        end
+    end)
+end)
+
+-- Jerk
+RunService.RenderStepped:Connect(function()
+    if not _G.Jerk then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.CFrame = root.CFrame * CFrame.new(
+        math.random(-10, 10) / 10,
+        math.random(-10, 10) / 10,
+        math.random(-10, 10) / 10
+    )
+end)
+
+print("MM2 Full Menu v6 загружен: ESP fix, Music Player, Jerk добавлены!")
