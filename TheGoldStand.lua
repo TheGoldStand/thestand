@@ -24,7 +24,7 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 300)
+mainFrame.Size = UDim2.new(0, 300, 0, 350)
 mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BackgroundTransparency = 0.15
@@ -150,30 +150,65 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
-local mm2Btn = Instance.new("TextButton", mainFrame)
-mm2Btn.Size = UDim2.new(1, -20, 0, 50)
-mm2Btn.Position = UDim2.new(0, 10, 0, 46)
-mm2Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-mm2Btn.Text = "🔪 Murder Mystery 2"
-mm2Btn.TextColor3 = Color3.fromRGB(255, 50, 50)
-mm2Btn.Font = Enum.Font.GothamBold
-mm2Btn.TextSize = 16
-mm2Btn.BorderSizePixel = 0
-mm2Btn.AutoButtonColor = false
-Instance.new("UICorner", mm2Btn).CornerRadius = UDim.new(0, 10)
+local gameListFrame = Instance.new("Frame", mainFrame)
+gameListFrame.Size = UDim2.new(1, 0, 1, -36)
+gameListFrame.Position = UDim2.new(0, 0, 0, 36)
+gameListFrame.BackgroundTransparency = 1
+gameListFrame.Visible = true
 
-local btnGrad = Instance.new("UIGradient", mm2Btn)
-btnGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 60)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 40))
-})
-btnGrad.Rotation = 90
+local gameScroll = Instance.new("ScrollingFrame", gameListFrame)
+gameScroll.Size = UDim2.new(1, 0, 1, 0)
+gameScroll.BackgroundTransparency = 1
+gameScroll.ScrollBarThickness = 4
+gameScroll.ScrollBarImageColor3 = Color3.fromRGB(255,255,255)
+gameScroll.ScrollBarImageTransparency = 0.8
+gameScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local gameListContent = Instance.new("Frame", gameScroll)
+gameListContent.Size = UDim2.new(1, 0, 0, 0)
+gameListContent.BackgroundTransparency = 1
+
+local function createGameButton(parent, yPos, gameName, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 50)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    btn.Text = gameName
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+    local btnGrad = Instance.new("UIGradient", btn)
+    btnGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 60)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 40))
+    })
+    btnGrad.Rotation = 90
+    btn.MouseButton1Click:Connect(callback)
+    btn.Parent = parent
+    return btn
+end
+
+createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
+    gameListFrame.Visible = false
+    createMM2Window()
+end)
+
+createGameButton(gameListContent, 70, "🏗️ Tower of Hell", function()
+    gameListFrame.Visible = false
+    createTOHWindow()
+end)
+
+gameListContent.Size = UDim2.new(1, 0, 0, 130)
+gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
 
 local mm2Frame = nil
 local openMM2Btn = nil
 local targetWindow = nil
 
-local function createMM2Window()
+function createMM2Window()
     if mm2Frame then return end
 
     mm2Frame = Instance.new("Frame")
@@ -595,9 +630,233 @@ local function createMM2Window()
     end)
 end
 
-mm2Btn.MouseButton1Click:Connect(createMM2Window)
+-- ==================== Tower of Hell Window ====================
+local tohFrame = nil
+local openTohBtn = nil
 
--- ==================== ИГРОВАЯ ЛОГИКА ====================
+function createTOHWindow()
+    if tohFrame then return end
+
+    tohFrame = Instance.new("Frame")
+    tohFrame.Size = UDim2.new(0, 280, 0, 250)
+    tohFrame.Position = UDim2.new(0.5, -140, 0.2, 0)
+    tohFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    tohFrame.BackgroundTransparency = 0.15
+    tohFrame.BorderSizePixel = 0
+    tohFrame.ClipsDescendants = true
+    tohFrame.Active = true
+    tohFrame.Visible = true
+    tohFrame.Parent = gui
+
+    local stroke = Instance.new("UIStroke", tohFrame)
+    stroke.Thickness = 2.5
+    stroke.LineJoinMode = Enum.LineJoinMode.Round
+    task.spawn(function()
+        while true do
+            for _, c in ipairs({Color3.fromRGB(255,200,0), Color3.fromRGB(255,230,50), Color3.fromRGB(255,170,0), Color3.fromRGB(255,215,0)}) do
+                stroke.Color = c
+                task.wait(0.4)
+            end
+        end
+    end)
+    Instance.new("UICorner", tohFrame).CornerRadius = UDim.new(0, 14)
+
+    local header = Instance.new("Frame", tohFrame)
+    header.Size = UDim2.new(1, 0, 0, 36)
+    header.BackgroundColor3 = Color3.fromRGB(255,200,0)
+    header.BorderSizePixel = 0
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
+    local hGrad = Instance.new("UIGradient", header)
+    hGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,220,50)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255,180,0))
+    })
+    hGrad.Rotation = 90
+
+    local title = Instance.new("TextLabel", header)
+    title.Size = UDim2.new(1, -100, 1, 0)
+    title.Position = UDim2.new(0, 40, 0, 0)
+    title.Text = "Tower of Hell"
+    title.TextColor3 = Color3.fromRGB(180,0,0)
+    title.TextSize = 16
+    title.Font = Enum.Font.GothamBold
+    title.BackgroundTransparency = 1
+    title.TextXAlignment = Enum.TextXAlignment.Center
+
+    local minimizeBtn = Instance.new("TextButton", header)
+    minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+    minimizeBtn.Position = UDim2.new(1, -66, 0, 3)
+    minimizeBtn.BackgroundTransparency = 1
+    minimizeBtn.Text = "−"
+    minimizeBtn.TextColor3 = Color3.fromRGB(180,0,0)
+    minimizeBtn.TextSize = 22
+    minimizeBtn.Font = Enum.Font.GothamBold
+
+    local closeBtn = Instance.new("TextButton", header)
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -33, 0, 3)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(180,0,0)
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
+
+    makeDraggable(header, tohFrame)
+
+    local content = Instance.new("Frame", tohFrame)
+    content.Size = UDim2.new(1, 0, 1, -36)
+    content.Position = UDim2.new(0, 0, 0, 36)
+    content.BackgroundTransparency = 1
+
+    local function createToggle(parent, y, text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -20, 0, 32)
+        btn.Position = UDim2.new(0, 10, 0, y)
+        btn.BackgroundColor3 = Color3.fromRGB(45,45,55)
+        btn.Text = text .. "  OFF"
+        btn.TextColor3 = Color3.fromRGB(200,200,200)
+        btn.Font = Enum.Font.GothamSemibold
+        btn.TextSize = 13
+        btn.BorderSizePixel = 0
+        btn.AutoButtonColor = false
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        local grad = Instance.new("UIGradient", btn)
+        grad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
+        })
+        grad.Rotation = 90
+        local state = false
+        btn.MouseButton1Click:Connect(function()
+            state = not state
+            if state then
+                btn.Text = text .. "  ON"
+                btn.TextColor3 = Color3.fromRGB(255,255,255)
+                grad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,80)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0,140,60))
+                })
+            else
+                btn.Text = text .. "  OFF"
+                btn.TextColor3 = Color3.fromRGB(200,200,200)
+                grad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
+                })
+            end
+            callback(state)
+        end)
+        btn.Parent = parent
+        return btn
+    end
+
+    local function createInput(parent, y, labelText, default, callback)
+        local holder = Instance.new("Frame")
+        holder.Size = UDim2.new(1, -20, 0, 32)
+        holder.Position = UDim2.new(0, 10, 0, y)
+        holder.BackgroundColor3 = Color3.fromRGB(30,30,40)
+        holder.BorderSizePixel = 0
+        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
+
+        local label = Instance.new("TextLabel", holder)
+        label.Size = UDim2.new(0, 100, 1, 0)
+        label.Position = UDim2.new(0, 10, 0, 0)
+        label.Text = labelText
+        label.TextColor3 = Color3.fromRGB(220,220,220)
+        label.Font = Enum.Font.GothamSemibold
+        label.TextSize = 13
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+
+        local input = Instance.new("TextBox", holder)
+        input.Size = UDim2.new(0, 60, 1, -8)
+        input.Position = UDim2.new(1, -70, 0, 4)
+        input.Text = tostring(default)
+        input.TextColor3 = Color3.fromRGB(255,255,255)
+        input.BackgroundColor3 = Color3.fromRGB(15,15,22)
+        input.Font = Enum.Font.GothamBold
+        input.TextSize = 13
+        input.BorderSizePixel = 0
+        Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
+
+        input.FocusLost:Connect(function()
+            local val = tonumber(input.Text)
+            if val then
+                callback(val)
+            else
+                input.Text = tostring(default)
+            end
+        end)
+        holder.Parent = parent
+        callback(default)
+        return holder
+    end
+
+    local y = 0
+    createToggle(content, y, "Fly", function(state)
+        _G.Fly = state
+        if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.PlatformStand = true
+        end
+    end); y = y + 38
+    createToggle(content, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
+    createInput(content, y, "WalkSpeed", _G.WalkSpeed, function(val)
+        _G.WalkSpeed = val
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = val
+        end
+    end); y = y + 38
+    createInput(content, y, "JumpPower", _G.JumpPower, function(val)
+        _G.JumpPower = val
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = val
+        end
+    end); y = y + 38
+
+    content.Size = UDim2.new(1, 0, 0, y + 10)
+
+    openTohBtn = Instance.new("TextButton")
+    openTohBtn.Size = UDim2.new(0, 100, 0, 40)
+    openTohBtn.Position = UDim2.new(0.5, -50, 0.25, 0)
+    openTohBtn.BackgroundColor3 = Color3.fromRGB(255,200,0)
+    openTohBtn.Text = "TOH"
+    openTohBtn.TextColor3 = Color3.fromRGB(180,0,0)
+    openTohBtn.TextSize = 18
+    openTohBtn.Font = Enum.Font.GothamBold
+    openTohBtn.Visible = false
+    openTohBtn.Parent = gui
+    Instance.new("UICorner", openTohBtn).CornerRadius = UDim.new(0, 10)
+
+    makeDraggable(openTohBtn, openTohBtn)
+
+    minimizeBtn.MouseButton1Click:Connect(function()
+        tohFrame.Visible = false
+        openTohBtn.Position = UDim2.new(tohFrame.Position.X.Scale, tohFrame.Position.X.Offset + 110, tohFrame.Position.Y.Scale, tohFrame.Position.Y.Offset)
+        openTohBtn.Visible = true
+    end)
+
+    openTohBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local clickStart = input.Position
+            openTohBtn.InputEnded:Connect(function(input2)
+                if input2.UserInputType == Enum.UserInputType.MouseButton1 or input2.UserInputType == Enum.UserInputType.Touch then
+                    if (input2.Position - clickStart).Magnitude < 10 then
+                        openTohBtn.Visible = false
+                        tohFrame.Position = UDim2.new(openTohBtn.Position.X.Scale, openTohBtn.Position.X.Offset - 110, openTohBtn.Position.Y.Scale, openTohBtn.Position.Y.Offset)
+                        tohFrame.Visible = true
+                    end
+                end
+            end)
+        end
+    end)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        if tohFrame then tohFrame:Destroy(); tohFrame = nil end
+        if openTohBtn then openTohBtn:Destroy(); openTohBtn = nil end
+    end)
+end
+
+-- ==================== Game Logic ====================
 -- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
@@ -649,7 +908,6 @@ task.spawn(function()
                                     task.wait(_G.AutoFarmDelay)
                                 end
                             else
-                                -- Slow mode: летим к монете по воздуху
                                 local currentChar = LocalPlayer.Character
                                 if currentChar and hum and hum.Health > 0 then
                                     hum.PlatformStand = true
@@ -730,7 +988,7 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Kill All (телепортирует всех к вам)
+-- Kill All
 RunService.RenderStepped:Connect(function()
     if not _G.KillAll then return end
     local char = LocalPlayer.Character
@@ -746,7 +1004,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Сброс PlatformStand при выключении Fly
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -757,7 +1014,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ==================== ESP ====================
+-- ==================== ESP (Improved) ====================
 ESP_objects = {}
 local OriginalSheriff = nil
 
@@ -781,12 +1038,26 @@ end)
 local function getRole(player)
     local char = player.Character
     if not char then return "Innocent" end
+
+    -- Check equipped tools
     for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") then
             local n = tool.Name:lower()
             if n:find("knife") or n:find("murder") then return "Murderer" end
         end
     end
+
+    -- Check backpack (inventory)
+    local bp = player:FindFirstChild("Backpack")
+    if bp then
+        for _, tool in ipairs(bp:GetChildren()) do
+            if tool:IsA("Tool") then
+                local n = tool.Name:lower()
+                if n:find("knife") or n:find("murder") then return "Murderer" end
+            end
+        end
+    end
+
     local hasGun = false
     for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
@@ -794,6 +1065,15 @@ local function getRole(player)
             break
         end
     end
+    if not hasGun and bp then
+        for _, tool in ipairs(bp:GetChildren()) do
+            if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
+                hasGun = true
+                break
+            end
+        end
+    end
+
     if hasGun then
         if OriginalSheriff and player == OriginalSheriff then return "Sheriff"
         else return "Fake Sheriff" end
@@ -834,7 +1114,7 @@ end
 
 local gunESPbox = nil
 
--- Принудительное обновление ESP каждую секунду
+-- ESP refresh every second
 task.spawn(function()
     while true do
         if _G.ESPEnabled then
