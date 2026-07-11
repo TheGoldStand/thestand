@@ -679,7 +679,7 @@ function createTOHWindow()
     if tohFrame then return end
 
     tohFrame = Instance.new("Frame")
-    tohFrame.Size = UDim2.new(0, 280, 0, 370) -- увеличил высоту под новые кнопки
+    tohFrame.Size = UDim2.new(0, 280, 0, 420) -- ещё увеличена высота под кнопку телепорта
     tohFrame.Position = UDim2.new(0.5, -140, 0.2, 0)
     tohFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     tohFrame.BackgroundTransparency = 0.15
@@ -805,6 +805,29 @@ function createTOHWindow()
         return btn
     end
 
+    local function createButton(parent, y, text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -20, 0, 32)
+        btn.Position = UDim2.new(0, 10, 0, y)
+        btn.BackgroundColor3 = Color3.fromRGB(60,90,230)
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.Font = Enum.Font.GothamSemibold
+        btn.TextSize = 13
+        btn.BorderSizePixel = 0
+        btn.AutoButtonColor = false
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        local grad = Instance.new("UIGradient", btn)
+        grad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(70,100,240)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(40,70,200))
+        })
+        grad.Rotation = 90
+        btn.MouseButton1Click:Connect(callback)
+        btn.Parent = parent
+        return btn
+    end
+
     local function createInput(parent, y, labelText, default, callback)
         local holder = Instance.new("Frame")
         holder.Size = UDim2.new(1, -20, 0, 32)
@@ -868,10 +891,27 @@ function createTOHWindow()
         end
     end); y = y + 38
 
-    -- Три новые кнопки
+    -- New correct effects
     createToggle(content, y, "Off Negative Effect", function(state) _G.AntiNegative = state end); y = y + 38
     createToggle(content, y, "Off Jump Effect", function(state) _G.AntiJump = state end); y = y + 38
     createToggle(content, y, "Off Invisible Effect", function(state) _G.AntiInvisible = state end); y = y + 38
+
+    -- Teleport to End
+    createButton(content, y, "Teleport to End", function()
+        local finish = nil
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and (obj.Name == "Finish" or obj.Name == "End") then
+                finish = obj
+                break
+            end
+        end
+        if finish and LocalPlayer.Character then
+            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = finish.CFrame + Vector3.new(0, 5, 0)
+            end
+        end
+    end); y = y + 38
 
     content.Size = UDim2.new(1, 0, 0, y + 10)
 
@@ -1084,7 +1124,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Сохранение настроек при ресете
+-- Сохранение настроек
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -1101,42 +1141,54 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     hum.JumpPower = _G.JumpPower
 end)
 
--- ==================== Tower of Hell специфичные эффекты ====================
--- Anti Negative Effect
+-- ==================== Tower of Hell особые эффекты ====================
+-- Off Negative Effect: убирает экранные эффекты (инверсию, размытие и т.д.)
 RunService.RenderStepped:Connect(function()
     if not _G.AntiNegative then return end
-    for _, part in ipairs(Workspace:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local name = part.Name:lower()
-            local mat = part.Material
-            if name:find("kill") or name:find("lava") or name:find("acid") or name:find("negative") or name:find("damage") or name:find("death") or mat == Enum.Material.CrackedLava then
-                part.CanCollide = false
-                part.Transparency = 1
-            end
+    -- Попытка убрать пост-эффекты, установленные игрой (клиентская часть)
+    pcall(function()
+        local lighting = game:GetService("Lighting")
+        -- Сбрасываем типичные пост-эффекты
+        if lighting:FindFirstChild("ColorCorrection") then
+            lighting.ColorCorrection:Destroy()
         end
-    end
+        if lighting:FindFirstChild("Blur") then
+            lighting.Blur:Destroy()
+        end
+        if lighting:FindFirstChild("Bloom") then
+            lighting.Bloom:Destroy()
+        end
+        if lighting:FindFirstChild("SunRays") then
+            lighting.SunRays:Destroy()
+        end
+        -- Можно добавить другие эффекты при необходимости
+    end)
 end)
 
--- Anti Jump Effect
+-- Off Jump Effect: отключает принудительный прыжок
 RunService.RenderStepped:Connect(function()
     if not _G.AntiJump then return end
-    for _, part in ipairs(Workspace:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local name = part.Name:lower()
-            if name:find("jump") or name:find("nojump") or name:find("antijump") then
-                part:Destroy()
-            end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            -- Блокируем автоматические прыжки, просто сбрасываем Jump
+            hum.Jump = false
+            -- Устанавливаем JumpPower в 0, чтобы нельзя было прыгнуть, но лучше в очень маленькое, чтобы не ломать
+            hum.JumpPower = 0
         end
     end
 end)
 
--- Anti Invisible Effect
+-- Off Invisible Effect: делает персонажа видимым
 RunService.RenderStepped:Connect(function()
     if not _G.AntiInvisible then return end
-    for _, part in ipairs(Workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.Transparency > 0.9 then
-            part.Transparency = 0
-            part.BrickColor = BrickColor.new("Bright red")
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 0
+            end
         end
     end
 end)
