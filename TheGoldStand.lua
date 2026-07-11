@@ -5,6 +5,7 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
+-- Глобальные переменные
 _G.AutoFarm = false
 _G.AutoFarmDelay = 2
 _G.AutoFarmMode = "Fast"
@@ -17,11 +18,13 @@ _G.TeleportAlways = false
 _G.ESPEnabled = false
 _G.GunESP = false
 
+-- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- Главный фрейм
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
@@ -32,6 +35,7 @@ mainFrame.ClipsDescendants = true
 mainFrame.Active = true
 mainFrame.Parent = gui
 
+-- Мерцающая золотая обводка
 local stroke = Instance.new("UIStroke", mainFrame)
 stroke.Thickness = 2.5
 stroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -46,6 +50,7 @@ end)
 
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
+-- Заголовок
 local header = Instance.new("Frame", mainFrame)
 header.Size = UDim2.new(1, 0, 0, 36)
 header.BackgroundColor3 = Color3.fromRGB(255,200,0)
@@ -68,6 +73,7 @@ title.Font = Enum.Font.GothamBold
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Center
 
+-- Кнопки управления главным окном
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -66, 0, 3)
@@ -98,6 +104,7 @@ openHubBtn.Visible = false
 openHubBtn.Parent = gui
 Instance.new("UICorner", openHubBtn).CornerRadius = UDim.new(0, 10)
 
+-- Перетаскивание
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local startPos = nil
@@ -149,6 +156,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
+-- Кнопка MM2 в главном меню
 local mm2Btn = Instance.new("TextButton", mainFrame)
 mm2Btn.Size = UDim2.new(1, -20, 0, 50)
 mm2Btn.Position = UDim2.new(0, 10, 0, 46)
@@ -168,6 +176,7 @@ btnGrad.Color = ColorSequence.new({
 })
 btnGrad.Rotation = 90
 
+-- ==================== ОКНО MM2 ====================
 local mm2Frame = nil
 local openMM2Btn = nil
 local targetWindow = nil
@@ -254,6 +263,7 @@ local function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, 0)
     mContent.BackgroundTransparency = 1
 
+    -- Фабрика элементов интерфейса
     local function createToggle(parent, y, text, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -20, 0, 32)
@@ -361,16 +371,15 @@ local function createMM2Window()
         return holder
     end
 
-    local targetSelectBtn
-
+    -- Создание окна выбора цели (отдельный перетаскиваемый фрейм)
     local function createTargetWindow()
-        if targetWindow then return end
+        if targetWindow then targetWindow:Destroy() end
         targetWindow = Instance.new("Frame")
         targetWindow.Size = UDim2.new(0, 220, 0, 250)
         targetWindow.Position = UDim2.new(0.5, -110, 0.3, 0)
         targetWindow.BackgroundColor3 = Color3.fromRGB(25,25,35)
         targetWindow.BorderSizePixel = 0
-        targetWindow.Visible = false
+        targetWindow.Visible = true
         targetWindow.Active = true
         targetWindow.Parent = gui
         Instance.new("UICorner", targetWindow).CornerRadius = UDim.new(0, 10)
@@ -405,7 +414,8 @@ local function createMM2Window()
         tClose.Font = Enum.Font.GothamBold
         tClose.TextSize = 16
         tClose.MouseButton1Click:Connect(function()
-            if targetWindow then targetWindow.Visible = false end
+            targetWindow:Destroy()
+            targetWindow = nil
         end)
 
         makeDraggable(tHeader, targetWindow)
@@ -422,68 +432,65 @@ local function createMM2Window()
         tContent.Size = UDim2.new(1, 0, 0, 0)
         tContent.BackgroundTransparency = 1
 
-        local function refreshTargetList()
-            for _, child in ipairs(tContent:GetChildren()) do child:Destroy() end
-            local list = {}
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer then table.insert(list, p) end
-            end
-            local yP = 0
-            for _, plr in ipairs(list) do
-                local entry = Instance.new("TextButton")
-                entry.Size = UDim2.new(1, -8, 0, 36)
-                entry.Position = UDim2.new(0, 4, 0, yP)
-                entry.BackgroundColor3 = (_G.SelectedTarget == plr) and Color3.fromRGB(80,80,100) or Color3.fromRGB(40,40,50)
-                entry.BorderSizePixel = 0
-                entry.AutoButtonColor = false
-                entry.Parent = tContent
-                Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
+        -- Заполняем список игроков
+        local yP = 0
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr == LocalPlayer then continue end
+            local entry = Instance.new("TextButton")
+            entry.Size = UDim2.new(1, -8, 0, 36)
+            entry.Position = UDim2.new(0, 4, 0, yP)
+            entry.BackgroundColor3 = (_G.SelectedTarget == plr) and Color3.fromRGB(80,80,100) or Color3.fromRGB(40,40,50)
+            entry.BorderSizePixel = 0
+            entry.AutoButtonColor = false
+            entry.Parent = tContent
+            Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
 
-                local avatar = Instance.new("ImageLabel", entry)
-                avatar.Size = UDim2.new(0, 28, 0, 28)
-                avatar.Position = UDim2.new(0, 5, 0.5, -14)
-                avatar.BackgroundTransparency = 1
-                avatar.Image = ""
-                Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
+            local avatar = Instance.new("ImageLabel", entry)
+            avatar.Size = UDim2.new(0, 28, 0, 28)
+            avatar.Position = UDim2.new(0, 5, 0.5, -14)
+            avatar.BackgroundTransparency = 1
+            avatar.Image = ""
+            Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
 
-                local nameLabel = Instance.new("TextLabel", entry)
-                nameLabel.Size = UDim2.new(1, -40, 1, 0)
-                nameLabel.Position = UDim2.new(0, 40, 0, 0)
-                nameLabel.Text = plr.Name
-                nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
-                nameLabel.Font = Enum.Font.GothamSemibold
-                nameLabel.TextSize = 13
-                nameLabel.BackgroundTransparency = 1
-                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            local nameLabel = Instance.new("TextLabel", entry)
+            nameLabel.Size = UDim2.new(1, -40, 1, 0)
+            nameLabel.Position = UDim2.new(0, 40, 0, 0)
+            nameLabel.Text = plr.Name
+            nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+            nameLabel.Font = Enum.Font.GothamSemibold
+            nameLabel.TextSize = 13
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-                entry.MouseButton1Click:Connect(function()
-                    _G.SelectedTarget = plr
-                    if targetWindow then targetWindow.Visible = false end
-                    if targetSelectBtn then
-                        targetSelectBtn.Text = "Target: " .. plr.Name
+            entry.MouseButton1Click:Connect(function()
+                _G.SelectedTarget = plr
+                if targetSelectBtn then
+                    targetSelectBtn.Text = "Target: " .. plr.Name
+                end
+                if targetWindow then
+                    targetWindow:Destroy()
+                    targetWindow = nil
+                end
+            end)
+
+            task.spawn(function()
+                local uid = plr.UserId
+                if uid > 0 then
+                    local ok, thumb = pcall(function()
+                        return Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+                    end)
+                    if ok and thumb then
+                        avatar.Image = thumb
                     end
-                end)
-
-                task.spawn(function()
-                    local uid = plr.UserId
-                    if uid > 0 then
-                        local ok, thumb = pcall(function()
-                            return Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
-                        end)
-                        if ok and thumb then
-                            avatar.Image = thumb
-                        end
-                    end
-                end)
-                yP = yP + 40
-            end
-            tContent.Size = UDim2.new(1, 0, 0, yP)
-            tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
+                end
+            end)
+            yP = yP + 40
         end
-
-        targetWindow.Refresh = refreshTargetList
+        tContent.Size = UDim2.new(1, 0, 0, yP)
+        tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
+    -- Строим элементы меню
     local y = 0
     createToggle(mContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
     createInput(mContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
@@ -509,16 +516,8 @@ local function createMM2Window()
     end); y = y + 38
     createToggle(mContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
-    targetSelectBtn = createButton(mContent, y, "Target: None", function()
-        if not targetWindow then createTargetWindow() end
-        if targetWindow then
-            if targetWindow.Visible then
-                targetWindow.Visible = false
-            else
-                targetWindow.Refresh()
-                targetWindow.Visible = true
-            end
-        end
+    local targetSelectBtn = createButton(mContent, y, "Target: None", function()
+        createTargetWindow()
     end)
     y = y + 38
 
@@ -564,6 +563,7 @@ local function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
+    -- Кнопка разворачивания окна MM2
     openMM2Btn = Instance.new("TextButton")
     openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
     openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
@@ -606,10 +606,9 @@ local function createMM2Window()
     end)
 end
 
-mm2Btn.MouseButton1Click:Connect(function()
-    createMM2Window()
-end)
+mm2Btn.MouseButton1Click:Connect(createMM2Window)
 
+-- ==================== Игровая логика ====================
 -- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
@@ -738,7 +737,6 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Сброс PlatformStand при выключении Fly
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -753,38 +751,31 @@ end)
 ESP_objects = {}
 local OriginalSheriff = nil
 
-local function findOriginalSheriff()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Character then
-            for _, tool in ipairs(p.Character:GetChildren()) do
-                if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
-                    return p
+-- Определяем изначального шерифа
+task.spawn(function()
+    while not OriginalSheriff do
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                for _, tool in ipairs(p.Character:GetChildren()) do
+                    if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
+                        OriginalSheriff = p
+                        break
+                    end
                 end
             end
+            if OriginalSheriff then break end
         end
-        local bp = p:FindFirstChild("Backpack")
-        if bp then
-            for _, tool in ipairs(bp:GetChildren()) do
-                if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
-                    return p
-                end
-            end
-        end
+        task.wait(1)
     end
-    return nil
-end
-
-OriginalSheriff = findOriginalSheriff()
+end)
 
 local function getRole(player)
     local char = player.Character
     if not char then return "Innocent" end
     for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") then
-            local name = tool.Name:lower()
-            if name:find("knife") or name:find("murder") then
-                return "Murderer"
-            end
+            local n = tool.Name:lower()
+            if n:find("knife") or n:find("murder") then return "Murderer" end
         end
     end
     local hasGun = false
@@ -795,7 +786,7 @@ local function getRole(player)
         end
     end
     if hasGun then
-        if OriginalSheriff and OriginalSheriff == player and OriginalSheriff.Character then
+        if OriginalSheriff and player == OriginalSheriff then
             return "Sheriff"
         else
             return "Fake Sheriff"
@@ -838,48 +829,58 @@ end
 local gunESPbox = nil
 
 RunService.RenderStepped:Connect(function()
-    if not _G.ESPEnabled and not _G.GunESP then return end
+    -- Очистка старых боксов, если ESP выключен
+    if not _G.ESPEnabled and not _G.GunESP then
+        for _, obj in ipairs(ESP_objects) do
+            if obj.box then obj.box.Visible = false; obj.box:Remove() end
+        end
+        table.clear(ESP_objects)
+        if gunESPbox then gunESPbox.Visible = false; gunESPbox:Remove(); gunESPbox = nil end
+        return
+    end
 
-    local newESP = {}
+    -- Role ESP
+    local activeTargets = {}
     if _G.ESPEnabled then
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
-                local found = nil
+                local role = getRole(plr)
+                local color = Color3.fromRGB(80,200,80)
+                if role == "Murderer" then color = Color3.fromRGB(255,50,50)
+                elseif role == "Sheriff" then color = Color3.fromRGB(50,150,255)
+                elseif role == "Fake Sheriff" then color = Color3.fromRGB(255,255,0)
+                end
+                local found = false
                 for _, obj in ipairs(ESP_objects) do
                     if obj.target == plr then
-                        found = obj
+                        found = true
                         break
                     end
                 end
                 if not found then
-                    local role = getRole(plr)
-                    local color = Color3.fromRGB(80,200,80)
-                    if role == "Murderer" then color = Color3.fromRGB(255,50,50)
-                    elseif role == "Sheriff" then color = Color3.fromRGB(50,150,255)
-                    elseif role == "Fake Sheriff" then color = Color3.fromRGB(255,255,0)
-                    end
-                    found = {target = plr, box = nil, update = nil}
-                    found.update = createESPBox(plr, color)
-                    found.box = ESP_objects[#ESP_objects].box
+                    createESPBox(plr, color)
                 end
-                newESP[plr] = found
+                activeTargets[plr] = true
             end
         end
     end
 
-    for _, obj in ipairs(ESP_objects) do
-        if not newESP[obj.target] then
+    -- Удаляем боксы для игроков, которых больше нет или ESP выключен
+    for i = #ESP_objects, 1, -1 do
+        local obj = ESP_objects[i]
+        if not activeTargets[obj.target] then
             obj.box.Visible = false
             obj.box:Remove()
+            table.remove(ESP_objects, i)
         end
     end
-    ESP_objects = {}
-    for _, v in pairs(newESP) do table.insert(ESP_objects, v) end
 
+    -- Обновляем позиции всех боксов
     for _, obj in ipairs(ESP_objects) do
         obj.update()
     end
 
+    -- Gun ESP
     if _G.GunESP then
         local gunTool = nil
         for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -912,16 +913,10 @@ RunService.RenderStepped:Connect(function()
                 if gunESPbox then gunESPbox.Visible = false end
             end
         else
-            if gunESPbox then
-                gunESPbox.Visible = false
-            end
+            if gunESPbox then gunESPbox.Visible = false end
         end
     else
-        if gunESPbox then
-            gunESPbox.Visible = false
-            gunESPbox:Remove()
-            gunESPbox = nil
-        end
+        if gunESPbox then gunESPbox.Visible = false; gunESPbox:Remove(); gunESPbox = nil end
     end
 end)
 
@@ -931,9 +926,5 @@ LocalPlayer.CharacterAdded:Connect(function()
         obj.box:Remove()
     end
     table.clear(ESP_objects)
-    if gunESPbox then
-        gunESPbox.Visible = false
-        gunESPbox:Remove()
-        gunESPbox = nil
-    end
+    if gunESPbox then gunESPbox.Visible = false; gunESPbox:Remove(); gunESPbox = nil end
 end)
