@@ -532,6 +532,7 @@ function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
+    -- Выдача Tornado Tool (с Handle и телепортом всех к вам)
     local function giveTornadoTool()
         local player = LocalPlayer
         local character = player.Character
@@ -539,14 +540,24 @@ function createMM2Window()
         local backpack = player:FindFirstChild("Backpack")
         if not backpack then return end
 
+        -- Удаляем старый
         local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
         if oldTool then oldTool:Destroy() end
 
         local tool = Instance.new("Tool")
         tool.Name = "Tornado"
-        tool.RequiresHandle = false
-        tool.ToolTip = "Tornado - Hold to pull all players"
+        tool.RequiresHandle = true
+        tool.ToolTip = "Tornado – Teleports all players to you"
         tool.Parent = backpack
+
+        -- Создаём Handle (красный шар)
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1, 1, 1)
+        handle.Shape = Enum.PartType.Ball
+        handle.BrickColor = BrickColor.new("Bright red")
+        handle.Material = Enum.Material.SmoothPlastic
+        handle.Parent = tool
     end
 
     local y = 0
@@ -1041,7 +1052,7 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Kill All
+-- Kill All (телепорт всех к вам, если включен и в руке нож)
 RunService.RenderStepped:Connect(function()
     if not _G.KillAll then return end
     local char = LocalPlayer.Character
@@ -1057,7 +1068,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Tornado Tool pull
+-- Tornado Tool – телепорт всех к вам (как Kill All), пока держите его в руках
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1070,12 +1081,8 @@ RunService.RenderStepped:Connect(function()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
         local targetChar = plr.Character
-        if targetChar then
-            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-            if targetRoot then
-                local direction = (myRoot.Position - targetRoot.Position).Unit
-                targetRoot.Velocity = direction * 50
-            end
+        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            targetChar.HumanoidRootPart.CFrame = myRoot.CFrame * CFrame.new(math.random(-2,2), 0, math.random(-2,2))
         end
     end
 end)
