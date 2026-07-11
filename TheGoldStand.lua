@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
@@ -23,7 +24,7 @@ gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм (хаб)
+-- Главный фрейм хаба
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 350)
 mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
@@ -88,6 +89,7 @@ closeBtn.TextColor3 = Color3.fromRGB(180,0,0)
 closeBtn.TextSize = 18
 closeBtn.Font = Enum.Font.GothamBold
 
+-- Плавающая кнопка для разворачивания хаба
 local openHubBtn = Instance.new("TextButton")
 openHubBtn.Size = UDim2.new(0, 100, 0, 40)
 openHubBtn.Position = UDim2.new(0.5, -50, 0.2, 0)
@@ -126,10 +128,43 @@ end
 makeDraggable(header, mainFrame)
 makeDraggable(openHubBtn, openHubBtn)
 
+-- Анимация хаба
+local function animateHub(show)
+    if show then
+        mainFrame.Size = UDim2.new(0, 0, 0, 0)
+        mainFrame.Visible = true
+        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 350)})
+        tween:Play()
+    else
+        local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        tween:Play()
+        tween.Completed:Connect(function()
+            mainFrame.Visible = false
+            openHubBtn.Visible = true
+            openHubBtn.Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset + 110, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
+        end)
+    end
+end
+
+-- Анимация окна MM2 (и любых других)
+local function animateMM2(show)
+    if not mm2Frame then return end
+    if show then
+        mm2Frame.Size = UDim2.new(0, 0, 0, 0)
+        mm2Frame.Visible = true
+        local tween = TweenService:Create(mm2Frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 400)})
+        tween:Play()
+    else
+        local tween = TweenService:Create(mm2Frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        tween:Play()
+        tween.Completed:Connect(function()
+            mm2Frame.Visible = false
+        end)
+    end
+end
+
 minimizeBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    openHubBtn.Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset + 110, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
-    openHubBtn.Visible = true
+    animateHub(false)
 end)
 
 openHubBtn.InputBegan:Connect(function(input)
@@ -140,7 +175,7 @@ openHubBtn.InputBegan:Connect(function(input)
                 if (input2.Position - clickStart).Magnitude < 10 then
                     openHubBtn.Visible = false
                     mainFrame.Position = UDim2.new(openHubBtn.Position.X.Scale, openHubBtn.Position.X.Offset - 110, openHubBtn.Position.Y.Scale, openHubBtn.Position.Y.Offset)
-                    mainFrame.Visible = true
+                    animateHub(true)
                 end
             end
         end)
@@ -151,7 +186,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Содержимое главного меню (кнопка MM2)
+-- Содержимое главного меню (кнопки игр)
 local gameListFrame = Instance.new("Frame", mainFrame)
 gameListFrame.Size = UDim2.new(1, 0, 1, -36)
 gameListFrame.Position = UDim2.new(0, 0, 0, 36)
@@ -193,13 +228,17 @@ local function createGameButton(parent, yPos, gameName, callback)
     return btn
 end
 
--- Кнопка MM2: открывает окно MM2
 createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
-    createMM2Window() -- вызов функции создания окна
+    createMM2Window()
+    animateMM2(true)
 end)
 
-gameListContent.Size = UDim2.new(1, 0, 0, 70)
-gameScroll.CanvasSize = UDim2.new(0, 0, 0, 70)
+createGameButton(gameListContent, 70, "🏥 Animal Hospital", function()
+    -- В разработке
+end)
+
+gameListContent.Size = UDim2.new(1, 0, 0, 130)
+gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
 
 -- ==================== ОКНО MM2 ====================
 local mm2Frame = nil
@@ -207,10 +246,8 @@ local openMM2Btn = nil
 local targetWindow = nil
 
 function createMM2Window()
-    -- Если окно уже существует, просто показываем его
     if mm2Frame then
-        mm2Frame.Visible = true
-        if openMM2Btn then openMM2Btn.Visible = false end
+        animateMM2(true)
         return
     end
 
@@ -222,7 +259,7 @@ function createMM2Window()
     mm2Frame.BorderSizePixel = 0
     mm2Frame.ClipsDescendants = true
     mm2Frame.Active = true
-    mm2Frame.Visible = true
+    mm2Frame.Visible = false
     mm2Frame.Parent = gui
 
     local mStroke = Instance.new("UIStroke", mm2Frame)
@@ -612,7 +649,6 @@ function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
-    -- Плавающая кнопка MM2 для разворачивания
     openMM2Btn = Instance.new("TextButton")
     openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
     openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
@@ -628,7 +664,7 @@ function createMM2Window()
     makeDraggable(openMM2Btn, openMM2Btn)
 
     mMinimize.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
+        animateMM2(false)
         openMM2Btn.Position = UDim2.new(mm2Frame.Position.X.Scale, mm2Frame.Position.X.Offset + 110, mm2Frame.Position.Y.Scale, mm2Frame.Position.Y.Offset)
         openMM2Btn.Visible = true
     end)
@@ -641,24 +677,21 @@ function createMM2Window()
                     if (input2.Position - clickStart).Magnitude < 10 then
                         openMM2Btn.Visible = false
                         mm2Frame.Position = UDim2.new(openMM2Btn.Position.X.Scale, openMM2Btn.Position.X.Offset - 110, openMM2Btn.Position.Y.Scale, openMM2Btn.Position.Y.Offset)
-                        mm2Frame.Visible = true
+                        animateMM2(true)
                     end
                 end
             end)
         end
     end)
 
-    -- Кнопка закрытия окна MM2 (уничтожает окно)
     mClose.MouseButton1Click:Connect(function()
-        mm2Frame:Destroy()
-        mm2Frame = nil
-        if openMM2Btn then openMM2Btn:Destroy(); openMM2Btn = nil end
+        animateMM2(false)
+        if openMM2Btn then openMM2Btn.Visible = false end
         if targetWindow then targetWindow:Destroy(); targetWindow = nil end
     end)
 end
 
 -- ==================== Game Logic ====================
--- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
         local char = LocalPlayer.Character
@@ -670,7 +703,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Auto Farm
 task.spawn(function()
     while true do
         if _G.AutoFarm then
@@ -734,7 +766,6 @@ task.spawn(function()
     end
 end)
 
--- Fly
 local PlayerModule = nil
 local function getPlayerModule()
     if PlayerModule then return PlayerModule end
@@ -776,7 +807,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Teleport Always
 RunService.RenderStepped:Connect(function()
     if not _G.TeleportAlways then return end
     if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
@@ -789,7 +819,6 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Kill All
 RunService.RenderStepped:Connect(function()
     if not _G.KillAll then return end
     local char = LocalPlayer.Character
@@ -805,7 +834,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Tornado Tool
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -824,7 +852,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Сохранение настроек при ресете
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -841,7 +868,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     hum.JumpPower = _G.JumpPower
 end)
 
--- ==================== ESP ====================
+-- ESP
 ESP_objects = {}
 local OriginalSheriff = nil
 
