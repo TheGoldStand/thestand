@@ -134,14 +134,25 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
-local content = Instance.new("TextLabel", mainFrame)
-content.Size = UDim2.new(1, 0, 1, -36)
-content.Position = UDim2.new(0, 0, 0, 36)
-content.BackgroundTransparency = 1
-content.Text = "Welcome to\nThe G0ld Stand HUB"
-content.TextColor3 = Color3.fromRGB(255,255,255)
-content.Font = Enum.Font.GothamSemibold
-content.TextSize = 14
-content.TextWrapped = true
-content.TextXAlignment = Enum.TextXAlignment.Center
-content.TextYAlignment = Enum.TextYAlignment.Center
+local mm2Btn = Instance.new("TextButton", mainFrame)
+mm2Btn.Size = UDim2.new(1, -20, 0, 50)
+mm2Btn.Position = UDim2.new(0, 10, 0, 46)
+mm2Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+mm2Btn.Text = "🔪 Murder Mystery 2"
+mm2Btn.TextColor3 = Color3.new(1, 1, 1)
+mm2Btn.Font = Enum.Font.GothamBold
+mm2Btn.TextSize = 16
+mm2Btn.BorderSizePixel = 0
+mm2Btn.AutoButtonColor = false
+Instance.new("UICorner", mm2Btn).CornerRadius = UDim.new(0, 10)
+
+local btnGrad = Instance.new("UIGradient", mm2Btn)
+btnGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 60)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 40))
+})
+btnGrad.Rotation = 90
+
+mm2Btn.MouseButton1Click:Connect(function()
+    
+end)
