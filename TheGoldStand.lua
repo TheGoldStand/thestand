@@ -1,21 +1,12 @@
---[[
-    The G0ld Stand HUB v1.0 (Empty Window)
-    - Перетаскиваемое окно
-    - Кнопки: свернуть, развернуть, закрыть (крестик)
-    - Золотой дизайн сохранён
-]]
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 
--- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
@@ -26,7 +17,6 @@ mainFrame.ClipsDescendants = true
 mainFrame.Active = true
 mainFrame.Parent = gui
 
--- Мерцающая золотая обводка
 local stroke = Instance.new("UIStroke", mainFrame)
 stroke.Thickness = 2.5
 stroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -41,7 +31,6 @@ end)
 
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
--- Заголовок (жёлтый)
 local header = Instance.new("Frame", mainFrame)
 header.Size = UDim2.new(1, 0, 0, 36)
 header.BackgroundColor3 = Color3.fromRGB(255,200,0)
@@ -54,7 +43,6 @@ hGrad.Color = ColorSequence.new({
 })
 hGrad.Rotation = 90
 
--- Название
 local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, -100, 1, 0)
 title.Position = UDim2.new(0, 40, 0, 0)
@@ -65,7 +53,6 @@ title.Font = Enum.Font.GothamBold
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Кнопка "Свернуть"
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -66, 0, 3)
@@ -75,7 +62,6 @@ minimizeBtn.TextColor3 = Color3.fromRGB(180,0,0)
 minimizeBtn.TextSize = 22
 minimizeBtn.Font = Enum.Font.GothamBold
 
--- Кнопка "Закрыть" (крестик)
 local closeBtn = Instance.new("TextButton", header)
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -33, 0, 3)
@@ -85,7 +71,6 @@ closeBtn.TextColor3 = Color3.fromRGB(180,0,0)
 closeBtn.TextSize = 18
 closeBtn.Font = Enum.Font.GothamBold
 
--- Плавающая кнопка "HUB" для разворачивания
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 100, 0, 40)
 openBtn.Position = UDim2.new(0.5, -50, 0.2, 0)
@@ -98,7 +83,6 @@ openBtn.Visible = false
 openBtn.Parent = gui
 Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0, 10)
 
--- ===== Перетаскивание =====
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local startPos = nil
@@ -125,15 +109,12 @@ end
 makeDraggable(header, mainFrame)
 makeDraggable(openBtn, openBtn)
 
--- ===== Логика кнопок =====
--- Свернуть
 minimizeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     openBtn.Position = UDim2.new(mainFrame.Position.X.Scale, mainFrame.Position.X.Offset + 110, mainFrame.Position.Y.Scale, mainFrame.Position.Y.Offset)
     openBtn.Visible = true
 end)
 
--- Развернуть (по клику на плавающую кнопку)
 openBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local clickStart = input.Position
@@ -149,12 +130,10 @@ openBtn.InputBegan:Connect(function(input)
     end
 end)
 
--- Закрыть навсегда
 closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Пример содержимого внутри окна (можно потом заменить на вкладки)
 local content = Instance.new("TextLabel", mainFrame)
 content.Size = UDim2.new(1, 0, 1, -36)
 content.Position = UDim2.new(0, 0, 0, 36)
@@ -166,5 +145,3 @@ content.TextSize = 14
 content.TextWrapped = true
 content.TextXAlignment = Enum.TextXAlignment.Center
 content.TextYAlignment = Enum.TextYAlignment.Center
-
-print("✅ The G0ld Stand HUB пустое окно загружено!")
