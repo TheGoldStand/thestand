@@ -14,6 +14,8 @@ _G.SelectedTarget = nil
 _G.WalkSpeed = 16
 _G.JumpPower = 50
 _G.TeleportAlways = false
+_G.ESPEnabled = false
+_G.GunESP = false
 
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -545,6 +547,20 @@ local function createMM2Window()
         end
     end); y = y + 38
 
+    createToggle(mContent, y, "Role ESP", function(state)
+        _G.ESPEnabled = state
+        if not state then
+            for _, v in pairs(ESP_objects) do
+                if v.box then v.box.Visible = false; v.box:Remove() end
+            end
+            table.clear(ESP_objects)
+        end
+    end); y = y + 38
+
+    createToggle(mContent, y, "ESP Gun", function(state)
+        _G.GunESP = state
+    end); y = y + 38
+
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
@@ -730,5 +746,194 @@ RunService.Stepped:Connect(function()
             local hum = char:FindFirstChild("Humanoid")
             if hum then hum.PlatformStand = false end
         end
+    end
+end)
+
+-- ==================== ESP ====================
+ESP_objects = {}
+local OriginalSheriff = nil
+
+local function findOriginalSheriff()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then
+            for _, tool in ipairs(p.Character:GetChildren()) do
+                if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
+                    return p
+                end
+            end
+        end
+        local bp = p:FindFirstChild("Backpack")
+        if bp then
+            for _, tool in ipairs(bp:GetChildren()) do
+                if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
+                    return p
+                end
+            end
+        end
+    end
+    return nil
+end
+
+OriginalSheriff = findOriginalSheriff()
+
+local function getRole(player)
+    local char = player.Character
+    if not char then return "Innocent" end
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            local name = tool.Name:lower()
+            if name:find("knife") or name:find("murder") then
+                return "Murderer"
+            end
+        end
+    end
+    local hasGun = false
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") and (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then
+            hasGun = true
+            break
+        end
+    end
+    if hasGun then
+        if OriginalSheriff and OriginalSheriff == player and OriginalSheriff.Character then
+            return "Sheriff"
+        else
+            return "Fake Sheriff"
+        end
+    end
+    return "Innocent"
+end
+
+local function createESPBox(target, color)
+    local box = Drawing.new("Square")
+    box.Color = color
+    box.Thickness = 2
+    box.Filled = false
+    box.Visible = false
+    local function update()
+        pcall(function()
+            local char = target.Character
+            if not char then box.Visible = false; return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head")
+            if not root or not head then box.Visible = false; return end
+            local cam = Workspace.CurrentCamera
+            local pos, onScreen = cam:WorldToViewportPoint(root.Position)
+            if onScreen then
+                local headPos = cam:WorldToViewportPoint(head.Position)
+                local height = (pos - headPos).Magnitude * 1.2
+                local width = height * 0.55
+                box.Size = Vector2.new(width, height)
+                box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+                box.Visible = true
+            else
+                box.Visible = false
+            end
+        end)
+    end
+    table.insert(ESP_objects, {box = box, update = update, target = target})
+    return update
+end
+
+local gunESPbox = nil
+
+RunService.RenderStepped:Connect(function()
+    if not _G.ESPEnabled and not _G.GunESP then return end
+
+    local newESP = {}
+    if _G.ESPEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local found = nil
+                for _, obj in ipairs(ESP_objects) do
+                    if obj.target == plr then
+                        found = obj
+                        break
+                    end
+                end
+                if not found then
+                    local role = getRole(plr)
+                    local color = Color3.fromRGB(80,200,80)
+                    if role == "Murderer" then color = Color3.fromRGB(255,50,50)
+                    elseif role == "Sheriff" then color = Color3.fromRGB(50,150,255)
+                    elseif role == "Fake Sheriff" then color = Color3.fromRGB(255,255,0)
+                    end
+                    found = {target = plr, box = nil, update = nil}
+                    found.update = createESPBox(plr, color)
+                    found.box = ESP_objects[#ESP_objects].box
+                end
+                newESP[plr] = found
+            end
+        end
+    end
+
+    for _, obj in ipairs(ESP_objects) do
+        if not newESP[obj.target] then
+            obj.box.Visible = false
+            obj.box:Remove()
+        end
+    end
+    ESP_objects = {}
+    for _, v in pairs(newESP) do table.insert(ESP_objects, v) end
+
+    for _, obj in ipairs(ESP_objects) do
+        obj.update()
+    end
+
+    if _G.GunESP then
+        local gunTool = nil
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Tool") and (obj.Name:lower():find("gun") or obj.Name:lower():find("pistol") or obj.Name:lower():find("sheriff")) and obj.Parent == Workspace then
+                gunTool = obj
+                break
+            end
+        end
+        if gunTool then
+            local handle = gunTool:FindFirstChild("Handle")
+            if handle then
+                if not gunESPbox then
+                    gunESPbox = Drawing.new("Square")
+                    gunESPbox.Color = Color3.fromRGB(255,255,0)
+                    gunESPbox.Thickness = 2
+                    gunESPbox.Filled = false
+                    gunESPbox.Visible = true
+                end
+                local cam = Workspace.CurrentCamera
+                local pos, onScreen = cam:WorldToViewportPoint(handle.Position)
+                if onScreen then
+                    local size = Vector2.new(30, 30)
+                    gunESPbox.Size = size
+                    gunESPbox.Position = Vector2.new(pos.X - size.X/2, pos.Y - size.Y/2)
+                    gunESPbox.Visible = true
+                else
+                    gunESPbox.Visible = false
+                end
+            else
+                if gunESPbox then gunESPbox.Visible = false end
+            end
+        else
+            if gunESPbox then
+                gunESPbox.Visible = false
+            end
+        end
+    else
+        if gunESPbox then
+            gunESPbox.Visible = false
+            gunESPbox:Remove()
+            gunESPbox = nil
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    for _, obj in ipairs(ESP_objects) do
+        obj.box.Visible = false
+        obj.box:Remove()
+    end
+    table.clear(ESP_objects)
+    if gunESPbox then
+        gunESPbox.Visible = false
+        gunESPbox:Remove()
+        gunESPbox = nil
     end
 end)
