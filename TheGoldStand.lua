@@ -151,7 +151,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Содержимое главного меню (только кнопка MM2)
+-- Содержимое главного меню (кнопка MM2)
 local gameListFrame = Instance.new("Frame", mainFrame)
 gameListFrame.Size = UDim2.new(1, 0, 1, -36)
 gameListFrame.Position = UDim2.new(0, 0, 0, 36)
@@ -193,9 +193,9 @@ local function createGameButton(parent, yPos, gameName, callback)
     return btn
 end
 
+-- Кнопка MM2: открывает окно MM2
 createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
-    gameListFrame.Visible = false
-    createMM2Window()
+    createMM2Window() -- вызов функции создания окна
 end)
 
 gameListContent.Size = UDim2.new(1, 0, 0, 70)
@@ -207,7 +207,12 @@ local openMM2Btn = nil
 local targetWindow = nil
 
 function createMM2Window()
-    if mm2Frame then return end
+    -- Если окно уже существует, просто показываем его
+    if mm2Frame then
+        mm2Frame.Visible = true
+        if openMM2Btn then openMM2Btn.Visible = false end
+        return
+    end
 
     mm2Frame = Instance.new("Frame")
     mm2Frame.Size = UDim2.new(0, 300, 0, 400)
@@ -245,24 +250,9 @@ function createMM2Window()
     })
     mhGrad.Rotation = 90
 
-    local mBack = Instance.new("TextButton", mHeader)
-    mBack.Size = UDim2.new(0, 60, 1, 0)
-    mBack.Position = UDim2.new(0, 5, 0, 0)
-    mBack.BackgroundTransparency = 1
-    mBack.Text = "← Back"
-    mBack.TextColor3 = Color3.fromRGB(180,0,0)
-    mBack.Font = Enum.Font.GothamBold
-    mBack.TextSize = 13
-    mBack.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
-        if openMM2Btn then openMM2Btn.Visible = false end
-        if targetWindow then targetWindow:Destroy(); targetWindow = nil end
-        gameListFrame.Visible = true
-    end)
-
     local mTitle = Instance.new("TextLabel", mHeader)
-    mTitle.Size = UDim2.new(1, -130, 1, 0)
-    mTitle.Position = UDim2.new(0, 70, 0, 0)
+    mTitle.Size = UDim2.new(1, -100, 1, 0)
+    mTitle.Position = UDim2.new(0, 40, 0, 0)
     mTitle.Text = "MM2 Script"
     mTitle.TextColor3 = Color3.fromRGB(180,0,0)
     mTitle.TextSize = 16
@@ -622,6 +612,7 @@ function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
+    -- Плавающая кнопка MM2 для разворачивания
     openMM2Btn = Instance.new("TextButton")
     openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
     openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
@@ -657,11 +648,12 @@ function createMM2Window()
         end
     end)
 
+    -- Кнопка закрытия окна MM2 (уничтожает окно)
     mClose.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
-        if openMM2Btn then openMM2Btn.Visible = false end
+        mm2Frame:Destroy()
+        mm2Frame = nil
+        if openMM2Btn then openMM2Btn:Destroy(); openMM2Btn = nil end
         if targetWindow then targetWindow:Destroy(); targetWindow = nil end
-        gameListFrame.Visible = true
     end)
 end
 
