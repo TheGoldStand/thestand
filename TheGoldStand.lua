@@ -17,6 +17,9 @@ _G.TeleportAlways = false
 _G.ESPEnabled = false
 _G.GunESP = false
 _G.KillAll = false
+_G.AntiNegative = false
+_G.AntiJump = false
+_G.AntiInvisible = false
 
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -532,7 +535,6 @@ function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
-    -- Выдача Tornado Tool (с Handle и телепортом всех к вам)
     local function giveTornadoTool()
         local player = LocalPlayer
         local character = player.Character
@@ -540,24 +542,14 @@ function createMM2Window()
         local backpack = player:FindFirstChild("Backpack")
         if not backpack then return end
 
-        -- Удаляем старый
         local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
         if oldTool then oldTool:Destroy() end
 
         local tool = Instance.new("Tool")
         tool.Name = "Tornado"
-        tool.RequiresHandle = true
+        tool.RequiresHandle = false
         tool.ToolTip = "Tornado – Teleports all players to you"
         tool.Parent = backpack
-
-        -- Создаём Handle (красный шар)
-        local handle = Instance.new("Part")
-        handle.Name = "Handle"
-        handle.Size = Vector3.new(1, 1, 1)
-        handle.Shape = Enum.PartType.Ball
-        handle.BrickColor = BrickColor.new("Bright red")
-        handle.Material = Enum.Material.SmoothPlastic
-        handle.Parent = tool
     end
 
     local y = 0
@@ -687,7 +679,7 @@ function createTOHWindow()
     if tohFrame then return end
 
     tohFrame = Instance.new("Frame")
-    tohFrame.Size = UDim2.new(0, 280, 0, 250)
+    tohFrame.Size = UDim2.new(0, 280, 0, 370) -- увеличил высоту под новые кнопки
     tohFrame.Position = UDim2.new(0.5, -140, 0.2, 0)
     tohFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     tohFrame.BackgroundTransparency = 0.15
@@ -876,6 +868,11 @@ function createTOHWindow()
         end
     end); y = y + 38
 
+    -- Три новые кнопки
+    createToggle(content, y, "Off Negative Effect", function(state) _G.AntiNegative = state end); y = y + 38
+    createToggle(content, y, "Off Jump Effect", function(state) _G.AntiJump = state end); y = y + 38
+    createToggle(content, y, "Off Invisible Effect", function(state) _G.AntiInvisible = state end); y = y + 38
+
     content.Size = UDim2.new(1, 0, 0, y + 10)
 
     openTohBtn = Instance.new("TextButton")
@@ -1052,7 +1049,7 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Kill All (телепорт всех к вам, если включен и в руке нож)
+-- Kill All
 RunService.RenderStepped:Connect(function()
     if not _G.KillAll then return end
     local char = LocalPlayer.Character
@@ -1068,7 +1065,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Tornado Tool – телепорт всех к вам (как Kill All), пока держите его в руках
+-- Tornado Tool
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1102,6 +1099,46 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid")
     hum.WalkSpeed = _G.WalkSpeed
     hum.JumpPower = _G.JumpPower
+end)
+
+-- ==================== Tower of Hell специфичные эффекты ====================
+-- Anti Negative Effect
+RunService.RenderStepped:Connect(function()
+    if not _G.AntiNegative then return end
+    for _, part in ipairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local name = part.Name:lower()
+            local mat = part.Material
+            if name:find("kill") or name:find("lava") or name:find("acid") or name:find("negative") or name:find("damage") or name:find("death") or mat == Enum.Material.CrackedLava then
+                part.CanCollide = false
+                part.Transparency = 1
+            end
+        end
+    end
+end)
+
+-- Anti Jump Effect
+RunService.RenderStepped:Connect(function()
+    if not _G.AntiJump then return end
+    for _, part in ipairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local name = part.Name:lower()
+            if name:find("jump") or name:find("nojump") or name:find("antijump") then
+                part:Destroy()
+            end
+        end
+    end
+end)
+
+-- Anti Invisible Effect
+RunService.RenderStepped:Connect(function()
+    if not _G.AntiInvisible then return end
+    for _, part in ipairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency > 0.9 then
+            part.Transparency = 0
+            part.BrickColor = BrickColor.new("Bright red")
+        end
+    end
 end)
 
 -- ==================== ESP ====================
