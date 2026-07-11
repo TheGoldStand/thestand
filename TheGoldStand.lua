@@ -17,9 +17,6 @@ _G.TeleportAlways = false
 _G.ESPEnabled = false
 _G.GunESP = false
 _G.KillAll = false
-_G.AntiNegative = false
-_G.AntiJump = false
-_G.AntiInvisible = false
 
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -27,8 +24,8 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 350)
-mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainFrame.BackgroundTransparency = 0.15
 mainFrame.BorderSizePixel = 0
@@ -153,809 +150,340 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
-local gameListFrame = Instance.new("Frame", mainFrame)
-gameListFrame.Size = UDim2.new(1, 0, 1, -36)
-gameListFrame.Position = UDim2.new(0, 0, 0, 36)
-gameListFrame.BackgroundTransparency = 1
-gameListFrame.Visible = true
+-- MM2 окно сразу внутри главного фрейма
+local targetWindow = nil
 
-local gameScroll = Instance.new("ScrollingFrame", gameListFrame)
-gameScroll.Size = UDim2.new(1, 0, 1, 0)
-gameScroll.BackgroundTransparency = 1
-gameScroll.ScrollBarThickness = 4
-gameScroll.ScrollBarImageColor3 = Color3.fromRGB(255,255,255)
-gameScroll.ScrollBarImageTransparency = 0.8
-gameScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+local mScroll = Instance.new("ScrollingFrame", mainFrame)
+mScroll.Size = UDim2.new(1, 0, 1, -36)
+mScroll.Position = UDim2.new(0, 0, 0, 36)
+mScroll.BackgroundTransparency = 1
+mScroll.ScrollBarThickness = 5
+mScroll.ScrollBarImageColor3 = Color3.fromRGB(255,255,255)
+mScroll.ScrollBarImageTransparency = 0.7
+mScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
-local gameListContent = Instance.new("Frame", gameScroll)
-gameListContent.Size = UDim2.new(1, 0, 0, 0)
-gameListContent.BackgroundTransparency = 1
+local mContent = Instance.new("Frame", mScroll)
+mContent.Size = UDim2.new(1, 0, 0, 0)
+mContent.BackgroundTransparency = 1
 
-local function createGameButton(parent, yPos, gameName, callback)
+local function createToggle(parent, y, text, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 50)
-    btn.Position = UDim2.new(0, 10, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    btn.Text = gameName
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
+    btn.Size = UDim2.new(1, -20, 0, 32)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(45,45,55)
+    btn.Text = text .. "  OFF"
+    btn.TextColor3 = Color3.fromRGB(200,200,200)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 13
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-    local btnGrad = Instance.new("UIGradient", btn)
-    btnGrad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 60)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 40))
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    local grad = Instance.new("UIGradient", btn)
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
     })
-    btnGrad.Rotation = 90
+    grad.Rotation = 90
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.Text = text .. "  ON"
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+            grad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,80)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(0,140,60))
+            })
+        else
+            btn.Text = text .. "  OFF"
+            btn.TextColor3 = Color3.fromRGB(200,200,200)
+            grad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
+            })
+        end
+        callback(state)
+    end)
+    btn.Parent = parent
+    return btn
+end
+
+local function createButton(parent, y, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 32)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(60,90,230)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 13
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    local grad = Instance.new("UIGradient", btn)
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(70,100,240)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(40,70,200))
+    })
+    grad.Rotation = 90
     btn.MouseButton1Click:Connect(callback)
     btn.Parent = parent
     return btn
 end
 
-createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
-    gameListFrame.Visible = false
-    createMM2Window()
-end)
+local function createInput(parent, y, labelText, default, callback)
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(1, -20, 0, 32)
+    holder.Position = UDim2.new(0, 10, 0, y)
+    holder.BackgroundColor3 = Color3.fromRGB(30,30,40)
+    holder.BorderSizePixel = 0
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
 
-createGameButton(gameListContent, 70, "🏗️ Tower of Hell", function()
-    gameListFrame.Visible = false
-    createTOHWindow()
-end)
+    local label = Instance.new("TextLabel", holder)
+    label.Size = UDim2.new(0, 100, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(220,220,220)
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 13
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
 
-gameListContent.Size = UDim2.new(1, 0, 0, 130)
-gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
+    local input = Instance.new("TextBox", holder)
+    input.Size = UDim2.new(0, 60, 1, -8)
+    input.Position = UDim2.new(1, -70, 0, 4)
+    input.Text = tostring(default)
+    input.TextColor3 = Color3.fromRGB(255,255,255)
+    input.BackgroundColor3 = Color3.fromRGB(15,15,22)
+    input.Font = Enum.Font.GothamBold
+    input.TextSize = 13
+    input.BorderSizePixel = 0
+    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
 
--- ==================== MM2 ====================
-local mm2Frame = nil
-local openMM2Btn = nil
-local targetWindow = nil
-
-function createMM2Window()
-    if mm2Frame then return end
-
-    mm2Frame = Instance.new("Frame")
-    mm2Frame.Size = UDim2.new(0, 300, 0, 400)
-    mm2Frame.Position = UDim2.new(0.5, -150, 0.2, 0)
-    mm2Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    mm2Frame.BackgroundTransparency = 0.15
-    mm2Frame.BorderSizePixel = 0
-    mm2Frame.ClipsDescendants = true
-    mm2Frame.Active = true
-    mm2Frame.Visible = true
-    mm2Frame.Parent = gui
-
-    local mStroke = Instance.new("UIStroke", mm2Frame)
-    mStroke.Thickness = 2.5
-    mStroke.LineJoinMode = Enum.LineJoinMode.Round
-    task.spawn(function()
-        while true do
-            for _, c in ipairs({Color3.fromRGB(255,200,0), Color3.fromRGB(255,230,50), Color3.fromRGB(255,170,0), Color3.fromRGB(255,215,0)}) do
-                mStroke.Color = c
-                task.wait(0.4)
-            end
-        end
-    end)
-    Instance.new("UICorner", mm2Frame).CornerRadius = UDim.new(0, 14)
-
-    local mHeader = Instance.new("Frame", mm2Frame)
-    mHeader.Size = UDim2.new(1, 0, 0, 36)
-    mHeader.BackgroundColor3 = Color3.fromRGB(255,200,0)
-    mHeader.BorderSizePixel = 0
-    Instance.new("UICorner", mHeader).CornerRadius = UDim.new(0, 14)
-    local mhGrad = Instance.new("UIGradient", mHeader)
-    mhGrad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,220,50)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255,180,0))
-    })
-    mhGrad.Rotation = 90
-
-    local mBack = Instance.new("TextButton", mHeader)
-    mBack.Size = UDim2.new(0, 60, 1, 0)
-    mBack.Position = UDim2.new(0, 5, 0, 0)
-    mBack.BackgroundTransparency = 1
-    mBack.Text = "← Back"
-    mBack.TextColor3 = Color3.fromRGB(180,0,0)
-    mBack.Font = Enum.Font.GothamBold
-    mBack.TextSize = 13
-    mBack.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
-        if openMM2Btn then openMM2Btn.Visible = false end
-        if targetWindow then targetWindow:Destroy(); targetWindow = nil end
-        gameListFrame.Visible = true
-    end)
-
-    local mTitle = Instance.new("TextLabel", mHeader)
-    mTitle.Size = UDim2.new(1, -130, 1, 0)
-    mTitle.Position = UDim2.new(0, 70, 0, 0)
-    mTitle.Text = "MM2 Script"
-    mTitle.TextColor3 = Color3.fromRGB(180,0,0)
-    mTitle.TextSize = 16
-    mTitle.Font = Enum.Font.GothamBold
-    mTitle.BackgroundTransparency = 1
-    mTitle.TextXAlignment = Enum.TextXAlignment.Center
-
-    local mMinimize = Instance.new("TextButton", mHeader)
-    mMinimize.Size = UDim2.new(0, 30, 0, 30)
-    mMinimize.Position = UDim2.new(1, -66, 0, 3)
-    mMinimize.BackgroundTransparency = 1
-    mMinimize.Text = "−"
-    mMinimize.TextColor3 = Color3.fromRGB(180,0,0)
-    mMinimize.TextSize = 22
-    mMinimize.Font = Enum.Font.GothamBold
-
-    local mClose = Instance.new("TextButton", mHeader)
-    mClose.Size = UDim2.new(0, 30, 0, 30)
-    mClose.Position = UDim2.new(1, -33, 0, 3)
-    mClose.BackgroundTransparency = 1
-    mClose.Text = "✕"
-    mClose.TextColor3 = Color3.fromRGB(180,0,0)
-    mClose.TextSize = 18
-    mClose.Font = Enum.Font.GothamBold
-
-    makeDraggable(mHeader, mm2Frame)
-
-    local mScroll = Instance.new("ScrollingFrame", mm2Frame)
-    mScroll.Size = UDim2.new(1, 0, 1, -36)
-    mScroll.Position = UDim2.new(0, 0, 0, 36)
-    mScroll.BackgroundTransparency = 1
-    mScroll.ScrollBarThickness = 5
-    mScroll.ScrollBarImageColor3 = Color3.fromRGB(255,255,255)
-    mScroll.ScrollBarImageTransparency = 0.7
-    mScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-    local mContent = Instance.new("Frame", mScroll)
-    mContent.Size = UDim2.new(1, 0, 0, 0)
-    mContent.BackgroundTransparency = 1
-
-    local function createToggle(parent, y, text, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 32)
-        btn.Position = UDim2.new(0, 10, 0, y)
-        btn.BackgroundColor3 = Color3.fromRGB(45,45,55)
-        btn.Text = text .. "  OFF"
-        btn.TextColor3 = Color3.fromRGB(200,200,200)
-        btn.Font = Enum.Font.GothamSemibold
-        btn.TextSize = 13
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-        local grad = Instance.new("UIGradient", btn)
-        grad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
-        })
-        grad.Rotation = 90
-        local state = false
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            if state then
-                btn.Text = text .. "  ON"
-                btn.TextColor3 = Color3.fromRGB(255,255,255)
-                grad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,80)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0,140,60))
-                })
-            else
-                btn.Text = text .. "  OFF"
-                btn.TextColor3 = Color3.fromRGB(200,200,200)
-                grad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
-                })
-            end
-            callback(state)
-        end)
-        btn.Parent = parent
-        return btn
-    end
-
-    local function createButton(parent, y, text, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 32)
-        btn.Position = UDim2.new(0, 10, 0, y)
-        btn.BackgroundColor3 = Color3.fromRGB(60,90,230)
-        btn.Text = text
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.Font = Enum.Font.GothamSemibold
-        btn.TextSize = 13
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-        local grad = Instance.new("UIGradient", btn)
-        grad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(70,100,240)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(40,70,200))
-        })
-        grad.Rotation = 90
-        btn.MouseButton1Click:Connect(callback)
-        btn.Parent = parent
-        return btn
-    end
-
-    local function createInput(parent, y, labelText, default, callback)
-        local holder = Instance.new("Frame")
-        holder.Size = UDim2.new(1, -20, 0, 32)
-        holder.Position = UDim2.new(0, 10, 0, y)
-        holder.BackgroundColor3 = Color3.fromRGB(30,30,40)
-        holder.BorderSizePixel = 0
-        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
-
-        local label = Instance.new("TextLabel", holder)
-        label.Size = UDim2.new(0, 100, 1, 0)
-        label.Position = UDim2.new(0, 10, 0, 0)
-        label.Text = labelText
-        label.TextColor3 = Color3.fromRGB(220,220,220)
-        label.Font = Enum.Font.GothamSemibold
-        label.TextSize = 13
-        label.BackgroundTransparency = 1
-        label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local input = Instance.new("TextBox", holder)
-        input.Size = UDim2.new(0, 60, 1, -8)
-        input.Position = UDim2.new(1, -70, 0, 4)
-        input.Text = tostring(default)
-        input.TextColor3 = Color3.fromRGB(255,255,255)
-        input.BackgroundColor3 = Color3.fromRGB(15,15,22)
-        input.Font = Enum.Font.GothamBold
-        input.TextSize = 13
-        input.BorderSizePixel = 0
-        Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
-
-        input.FocusLost:Connect(function()
-            local val = tonumber(input.Text)
-            if val then
-                callback(val)
-            else
-                input.Text = tostring(default)
-            end
-        end)
-        holder.Parent = parent
-        callback(default)
-        return holder
-    end
-
-    local targetSelectBtn
-
-    local function createTargetWindow()
-        if targetWindow then targetWindow:Destroy() end
-        targetWindow = Instance.new("Frame")
-        targetWindow.Size = UDim2.new(0, 220, 0, 250)
-        targetWindow.Position = UDim2.new(0.5, -110, 0.3, 0)
-        targetWindow.BackgroundColor3 = Color3.fromRGB(25,25,35)
-        targetWindow.BorderSizePixel = 0
-        targetWindow.Visible = true
-        targetWindow.Active = true
-        targetWindow.Parent = gui
-        Instance.new("UICorner", targetWindow).CornerRadius = UDim.new(0, 10)
-        Instance.new("UIStroke", targetWindow).Color = Color3.fromRGB(255,200,0)
-        Instance.new("UIStroke", targetWindow).Thickness = 2
-
-        local tHeader = Instance.new("Frame", targetWindow)
-        tHeader.Size = UDim2.new(1, 0, 0, 30)
-        tHeader.BackgroundColor3 = Color3.fromRGB(255,200,0)
-        Instance.new("UICorner", tHeader).CornerRadius = UDim.new(0, 10)
-        local tGrad = Instance.new("UIGradient", tHeader)
-        tGrad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255,220,50)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255,180,0))
-        })
-        local tTitle = Instance.new("TextLabel", tHeader)
-        tTitle.Size = UDim2.new(1, -30, 1, 0)
-        tTitle.Position = UDim2.new(0, 10, 0, 0)
-        tTitle.Text = "Select Target"
-        tTitle.TextColor3 = Color3.fromRGB(180,0,0)
-        tTitle.Font = Enum.Font.GothamBold
-        tTitle.TextSize = 14
-        tTitle.BackgroundTransparency = 1
-        tTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-        local tClose = Instance.new("TextButton", tHeader)
-        tClose.Size = UDim2.new(0, 30, 1, 0)
-        tClose.Position = UDim2.new(1, -30, 0, 0)
-        tClose.BackgroundTransparency = 1
-        tClose.Text = "✕"
-        tClose.TextColor3 = Color3.fromRGB(180,0,0)
-        tClose.Font = Enum.Font.GothamBold
-        tClose.TextSize = 16
-        tClose.MouseButton1Click:Connect(function()
-            targetWindow:Destroy()
-            targetWindow = nil
-        end)
-
-        makeDraggable(tHeader, targetWindow)
-
-        local tScroll = Instance.new("ScrollingFrame", targetWindow)
-        tScroll.Size = UDim2.new(1, 0, 1, -30)
-        tScroll.Position = UDim2.new(0, 0, 0, 30)
-        tScroll.BackgroundTransparency = 1
-        tScroll.ScrollBarThickness = 4
-        tScroll.ScrollBarImageTransparency = 0.8
-        tScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-        local tContent = Instance.new("Frame", tScroll)
-        tContent.Size = UDim2.new(1, 0, 0, 0)
-        tContent.BackgroundTransparency = 1
-
-        local yP = 0
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr == LocalPlayer then continue end
-            local entry = Instance.new("TextButton")
-            entry.Size = UDim2.new(1, -8, 0, 36)
-            entry.Position = UDim2.new(0, 4, 0, yP)
-            entry.BackgroundColor3 = (_G.SelectedTarget == plr) and Color3.fromRGB(80,80,100) or Color3.fromRGB(40,40,50)
-            entry.BorderSizePixel = 0
-            entry.AutoButtonColor = false
-            entry.Parent = tContent
-            Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
-
-            local avatar = Instance.new("ImageLabel", entry)
-            avatar.Size = UDim2.new(0, 28, 0, 28)
-            avatar.Position = UDim2.new(0, 5, 0.5, -14)
-            avatar.BackgroundTransparency = 1
-            avatar.Image = ""
-            Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
-
-            local nameLabel = Instance.new("TextLabel", entry)
-            nameLabel.Size = UDim2.new(1, -40, 1, 0)
-            nameLabel.Position = UDim2.new(0, 40, 0, 0)
-            nameLabel.Text = plr.Name
-            nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
-            nameLabel.Font = Enum.Font.GothamSemibold
-            nameLabel.TextSize = 13
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-            entry.MouseButton1Click:Connect(function()
-                _G.SelectedTarget = plr
-                if targetSelectBtn then
-                    targetSelectBtn.Text = "Target: " .. plr.Name
-                end
-                if targetWindow then
-                    targetWindow:Destroy()
-                    targetWindow = nil
-                end
-            end)
-
-            task.spawn(function()
-                local uid = plr.UserId
-                if uid > 0 then
-                    local ok, thumb = pcall(function()
-                        return Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
-                    end)
-                    if ok and thumb then
-                        avatar.Image = thumb
-                    end
-                end
-            end)
-            yP = yP + 40
-        end
-        tContent.Size = UDim2.new(1, 0, 0, yP)
-        tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
-    end
-
-    local function giveTornadoTool()
-        local player = LocalPlayer
-        local character = player.Character
-        if not character then return end
-        local backpack = player:FindFirstChild("Backpack")
-        if not backpack then return end
-
-        local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
-        if oldTool then oldTool:Destroy() end
-
-        local tool = Instance.new("Tool")
-        tool.Name = "Tornado"
-        tool.RequiresHandle = false
-        tool.ToolTip = "Tornado – Teleports all players to you"
-        tool.Parent = backpack
-    end
-
-    local y = 0
-    createToggle(mContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
-    createInput(mContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
-        _G.AutoFarmDelay = math.clamp(val, 0.5, 3)
-    end); y = y + 38
-
-    local afModeBtn = createButton(mContent, y, "AF Mode: Fast", function()
-        if _G.AutoFarmMode == "Fast" then
-            _G.AutoFarmMode = "Slow"
-            afModeBtn.Text = "AF Mode: Slow"
+    input.FocusLost:Connect(function()
+        local val = tonumber(input.Text)
+        if val then
+            callback(val)
         else
-            _G.AutoFarmMode = "Fast"
-            afModeBtn.Text = "AF Mode: Fast"
+            input.Text = tostring(default)
         end
     end)
-    y = y + 38
-
-    createToggle(mContent, y, "Fly", function(state)
-        _G.Fly = state
-        if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.PlatformStand = true
-        end
-    end); y = y + 38
-    createToggle(mContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
-
-    targetSelectBtn = createButton(mContent, y, "Target: None", function()
-        createTargetWindow()
-    end)
-    y = y + 38
-
-    createButton(mContent, y, "Teleport to Target", function()
-        if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = _G.SelectedTarget.Character.HumanoidRootPart.CFrame
-            end
-        end
-    end); y = y + 38
-
-    createToggle(mContent, y, "Teleport Always", function(state) _G.TeleportAlways = state end); y = y + 38
-
-    createInput(mContent, y, "WalkSpeed", _G.WalkSpeed, function(val)
-        _G.WalkSpeed = val
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = val
-        end
-    end); y = y + 38
-
-    createInput(mContent, y, "JumpPower", _G.JumpPower, function(val)
-        _G.JumpPower = val
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.JumpPower = val
-        end
-    end); y = y + 38
-
-    createToggle(mContent, y, "Role ESP", function(state)
-        _G.ESPEnabled = state
-        if not state then
-            for _, v in pairs(ESP_objects) do
-                if v.box then v.box.Visible = false; v.box:Remove() end
-            end
-            table.clear(ESP_objects)
-        end
-    end); y = y + 38
-
-    createToggle(mContent, y, "ESP Gun", function(state) _G.GunESP = state end); y = y + 38
-
-    createToggle(mContent, y, "Kill All", function(state) _G.KillAll = state end); y = y + 38
-
-    createButton(mContent, y, "Tornado Tool", function()
-        giveTornadoTool()
-    end); y = y + 38
-
-    mContent.Size = UDim2.new(1, 0, 0, y + 10)
-    mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
-
-    openMM2Btn = Instance.new("TextButton")
-    openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
-    openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
-    openMM2Btn.BackgroundColor3 = Color3.fromRGB(255,200,0)
-    openMM2Btn.Text = "MM2"
-    openMM2Btn.TextColor3 = Color3.fromRGB(180,0,0)
-    openMM2Btn.TextSize = 18
-    openMM2Btn.Font = Enum.Font.GothamBold
-    openMM2Btn.Visible = false
-    openMM2Btn.Parent = gui
-    Instance.new("UICorner", openMM2Btn).CornerRadius = UDim.new(0, 10)
-
-    makeDraggable(openMM2Btn, openMM2Btn)
-
-    mMinimize.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
-        openMM2Btn.Position = UDim2.new(mm2Frame.Position.X.Scale, mm2Frame.Position.X.Offset + 110, mm2Frame.Position.Y.Scale, mm2Frame.Position.Y.Offset)
-        openMM2Btn.Visible = true
-    end)
-
-    openMM2Btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local clickStart = input.Position
-            openMM2Btn.InputEnded:Connect(function(input2)
-                if input2.UserInputType == Enum.UserInputType.MouseButton1 or input2.UserInputType == Enum.UserInputType.Touch then
-                    if (input2.Position - clickStart).Magnitude < 10 then
-                        openMM2Btn.Visible = false
-                        mm2Frame.Position = UDim2.new(openMM2Btn.Position.X.Scale, openMM2Btn.Position.X.Offset - 110, openMM2Btn.Position.Y.Scale, openMM2Btn.Position.Y.Offset)
-                        mm2Frame.Visible = true
-                    end
-                end
-            end)
-        end
-    end)
-
-    mClose.MouseButton1Click:Connect(function()
-        mm2Frame.Visible = false
-        if openMM2Btn then openMM2Btn.Visible = false end
-        if targetWindow then targetWindow:Destroy(); targetWindow = nil end
-        gameListFrame.Visible = true
-    end)
+    holder.Parent = parent
+    callback(default)
+    return holder
 end
 
--- ==================== Tower of Hell ====================
-local tohFrame = nil
-local openTohBtn = nil
+local targetSelectBtn
 
-function createTOHWindow()
-    if tohFrame then return end
+local function createTargetWindow()
+    if targetWindow then targetWindow:Destroy() end
+    targetWindow = Instance.new("Frame")
+    targetWindow.Size = UDim2.new(0, 220, 0, 250)
+    targetWindow.Position = UDim2.new(0.5, -110, 0.3, 0)
+    targetWindow.BackgroundColor3 = Color3.fromRGB(25,25,35)
+    targetWindow.BorderSizePixel = 0
+    targetWindow.Visible = true
+    targetWindow.Active = true
+    targetWindow.Parent = gui
+    Instance.new("UICorner", targetWindow).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", targetWindow).Color = Color3.fromRGB(255,200,0)
+    Instance.new("UIStroke", targetWindow).Thickness = 2
 
-    tohFrame = Instance.new("Frame")
-    tohFrame.Size = UDim2.new(0, 280, 0, 420) -- ещё увеличена высота под кнопку телепорта
-    tohFrame.Position = UDim2.new(0.5, -140, 0.2, 0)
-    tohFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    tohFrame.BackgroundTransparency = 0.15
-    tohFrame.BorderSizePixel = 0
-    tohFrame.ClipsDescendants = true
-    tohFrame.Active = true
-    tohFrame.Visible = true
-    tohFrame.Parent = gui
-
-    local stroke = Instance.new("UIStroke", tohFrame)
-    stroke.Thickness = 2.5
-    stroke.LineJoinMode = Enum.LineJoinMode.Round
-    task.spawn(function()
-        while true do
-            for _, c in ipairs({Color3.fromRGB(255,200,0), Color3.fromRGB(255,230,50), Color3.fromRGB(255,170,0), Color3.fromRGB(255,215,0)}) do
-                stroke.Color = c
-                task.wait(0.4)
-            end
-        end
-    end)
-    Instance.new("UICorner", tohFrame).CornerRadius = UDim.new(0, 14)
-
-    local header = Instance.new("Frame", tohFrame)
-    header.Size = UDim2.new(1, 0, 0, 36)
-    header.BackgroundColor3 = Color3.fromRGB(255,200,0)
-    header.BorderSizePixel = 0
-    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
-    local hGrad = Instance.new("UIGradient", header)
-    hGrad.Color = ColorSequence.new({
+    local tHeader = Instance.new("Frame", targetWindow)
+    tHeader.Size = UDim2.new(1, 0, 0, 30)
+    tHeader.BackgroundColor3 = Color3.fromRGB(255,200,0)
+    Instance.new("UICorner", tHeader).CornerRadius = UDim.new(0, 10)
+    local tGrad = Instance.new("UIGradient", tHeader)
+    tGrad.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255,220,50)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(255,180,0))
     })
-    hGrad.Rotation = 90
+    local tTitle = Instance.new("TextLabel", tHeader)
+    tTitle.Size = UDim2.new(1, -30, 1, 0)
+    tTitle.Position = UDim2.new(0, 10, 0, 0)
+    tTitle.Text = "Select Target"
+    tTitle.TextColor3 = Color3.fromRGB(180,0,0)
+    tTitle.Font = Enum.Font.GothamBold
+    tTitle.TextSize = 14
+    tTitle.BackgroundTransparency = 1
+    tTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-    local backBtn = Instance.new("TextButton", header)
-    backBtn.Size = UDim2.new(0, 60, 1, 0)
-    backBtn.Position = UDim2.new(0, 5, 0, 0)
-    backBtn.BackgroundTransparency = 1
-    backBtn.Text = "← Back"
-    backBtn.TextColor3 = Color3.fromRGB(180,0,0)
-    backBtn.Font = Enum.Font.GothamBold
-    backBtn.TextSize = 13
-    backBtn.MouseButton1Click:Connect(function()
-        tohFrame.Visible = false
-        if openTohBtn then openTohBtn.Visible = false end
-        gameListFrame.Visible = true
+    local tClose = Instance.new("TextButton", tHeader)
+    tClose.Size = UDim2.new(0, 30, 1, 0)
+    tClose.Position = UDim2.new(1, -30, 0, 0)
+    tClose.BackgroundTransparency = 1
+    tClose.Text = "✕"
+    tClose.TextColor3 = Color3.fromRGB(180,0,0)
+    tClose.Font = Enum.Font.GothamBold
+    tClose.TextSize = 16
+    tClose.MouseButton1Click:Connect(function()
+        targetWindow:Destroy()
+        targetWindow = nil
     end)
 
-    local title = Instance.new("TextLabel", header)
-    title.Size = UDim2.new(1, -130, 1, 0)
-    title.Position = UDim2.new(0, 70, 0, 0)
-    title.Text = "Tower of Hell"
-    title.TextColor3 = Color3.fromRGB(180,0,0)
-    title.TextSize = 16
-    title.Font = Enum.Font.GothamBold
-    title.BackgroundTransparency = 1
-    title.TextXAlignment = Enum.TextXAlignment.Center
+    makeDraggable(tHeader, targetWindow)
 
-    local minimizeBtn = Instance.new("TextButton", header)
-    minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-    minimizeBtn.Position = UDim2.new(1, -66, 0, 3)
-    minimizeBtn.BackgroundTransparency = 1
-    minimizeBtn.Text = "−"
-    minimizeBtn.TextColor3 = Color3.fromRGB(180,0,0)
-    minimizeBtn.TextSize = 22
-    minimizeBtn.Font = Enum.Font.GothamBold
+    local tScroll = Instance.new("ScrollingFrame", targetWindow)
+    tScroll.Size = UDim2.new(1, 0, 1, -30)
+    tScroll.Position = UDim2.new(0, 0, 0, 30)
+    tScroll.BackgroundTransparency = 1
+    tScroll.ScrollBarThickness = 4
+    tScroll.ScrollBarImageTransparency = 0.8
+    tScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
-    local closeBtn = Instance.new("TextButton", header)
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -33, 0, 3)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(180,0,0)
-    closeBtn.TextSize = 18
-    closeBtn.Font = Enum.Font.GothamBold
+    local tContent = Instance.new("Frame", tScroll)
+    tContent.Size = UDim2.new(1, 0, 0, 0)
+    tContent.BackgroundTransparency = 1
 
-    makeDraggable(header, tohFrame)
+    local yP = 0
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local entry = Instance.new("TextButton")
+        entry.Size = UDim2.new(1, -8, 0, 36)
+        entry.Position = UDim2.new(0, 4, 0, yP)
+        entry.BackgroundColor3 = (_G.SelectedTarget == plr) and Color3.fromRGB(80,80,100) or Color3.fromRGB(40,40,50)
+        entry.BorderSizePixel = 0
+        entry.AutoButtonColor = false
+        entry.Parent = tContent
+        Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
 
-    local content = Instance.new("Frame", tohFrame)
-    content.Size = UDim2.new(1, 0, 1, -36)
-    content.Position = UDim2.new(0, 0, 0, 36)
-    content.BackgroundTransparency = 1
+        local avatar = Instance.new("ImageLabel", entry)
+        avatar.Size = UDim2.new(0, 28, 0, 28)
+        avatar.Position = UDim2.new(0, 5, 0.5, -14)
+        avatar.BackgroundTransparency = 1
+        avatar.Image = ""
+        Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
 
-    local function createToggle(parent, y, text, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 32)
-        btn.Position = UDim2.new(0, 10, 0, y)
-        btn.BackgroundColor3 = Color3.fromRGB(45,45,55)
-        btn.Text = text .. "  OFF"
-        btn.TextColor3 = Color3.fromRGB(200,200,200)
-        btn.Font = Enum.Font.GothamSemibold
-        btn.TextSize = 13
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-        local grad = Instance.new("UIGradient", btn)
-        grad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
-        })
-        grad.Rotation = 90
-        local state = false
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            if state then
-                btn.Text = text .. "  ON"
-                btn.TextColor3 = Color3.fromRGB(255,255,255)
-                grad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,80)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0,140,60))
-                })
-            else
-                btn.Text = text .. "  OFF"
-                btn.TextColor3 = Color3.fromRGB(200,200,200)
-                grad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(45,45,55)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(35,35,45))
-                })
+        local nameLabel = Instance.new("TextLabel", entry)
+        nameLabel.Size = UDim2.new(1, -40, 1, 0)
+        nameLabel.Position = UDim2.new(0, 40, 0, 0)
+        nameLabel.Text = plr.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        nameLabel.Font = Enum.Font.GothamSemibold
+        nameLabel.TextSize = 13
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        entry.MouseButton1Click:Connect(function()
+            _G.SelectedTarget = plr
+            if targetSelectBtn then
+                targetSelectBtn.Text = "Target: " .. plr.Name
             end
-            callback(state)
-        end)
-        btn.Parent = parent
-        return btn
-    end
-
-    local function createButton(parent, y, text, callback)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 32)
-        btn.Position = UDim2.new(0, 10, 0, y)
-        btn.BackgroundColor3 = Color3.fromRGB(60,90,230)
-        btn.Text = text
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.Font = Enum.Font.GothamSemibold
-        btn.TextSize = 13
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-        local grad = Instance.new("UIGradient", btn)
-        grad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(70,100,240)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(40,70,200))
-        })
-        grad.Rotation = 90
-        btn.MouseButton1Click:Connect(callback)
-        btn.Parent = parent
-        return btn
-    end
-
-    local function createInput(parent, y, labelText, default, callback)
-        local holder = Instance.new("Frame")
-        holder.Size = UDim2.new(1, -20, 0, 32)
-        holder.Position = UDim2.new(0, 10, 0, y)
-        holder.BackgroundColor3 = Color3.fromRGB(30,30,40)
-        holder.BorderSizePixel = 0
-        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
-
-        local label = Instance.new("TextLabel", holder)
-        label.Size = UDim2.new(0, 100, 1, 0)
-        label.Position = UDim2.new(0, 10, 0, 0)
-        label.Text = labelText
-        label.TextColor3 = Color3.fromRGB(220,220,220)
-        label.Font = Enum.Font.GothamSemibold
-        label.TextSize = 13
-        label.BackgroundTransparency = 1
-        label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local input = Instance.new("TextBox", holder)
-        input.Size = UDim2.new(0, 60, 1, -8)
-        input.Position = UDim2.new(1, -70, 0, 4)
-        input.Text = tostring(default)
-        input.TextColor3 = Color3.fromRGB(255,255,255)
-        input.BackgroundColor3 = Color3.fromRGB(15,15,22)
-        input.Font = Enum.Font.GothamBold
-        input.TextSize = 13
-        input.BorderSizePixel = 0
-        Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
-
-        input.FocusLost:Connect(function()
-            local val = tonumber(input.Text)
-            if val then
-                callback(val)
-            else
-                input.Text = tostring(default)
+            if targetWindow then
+                targetWindow:Destroy()
+                targetWindow = nil
             end
         end)
-        holder.Parent = parent
-        callback(default)
-        return holder
-    end
 
-    local y = 0
-    createToggle(content, y, "Fly", function(state)
-        _G.Fly = state
-        if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.PlatformStand = true
-        end
-    end); y = y + 38
-    createToggle(content, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
-    createInput(content, y, "WalkSpeed", _G.WalkSpeed, function(val)
-        _G.WalkSpeed = val
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = val
-        end
-    end); y = y + 38
-    createInput(content, y, "JumpPower", _G.JumpPower, function(val)
-        _G.JumpPower = val
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.JumpPower = val
-        end
-    end); y = y + 38
-
-    -- New correct effects
-    createToggle(content, y, "Off Negative Effect", function(state) _G.AntiNegative = state end); y = y + 38
-    createToggle(content, y, "Off Jump Effect", function(state) _G.AntiJump = state end); y = y + 38
-    createToggle(content, y, "Off Invisible Effect", function(state) _G.AntiInvisible = state end); y = y + 38
-
-    -- Teleport to End
-    createButton(content, y, "Teleport to End", function()
-        local finish = nil
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and (obj.Name == "Finish" or obj.Name == "End") then
-                finish = obj
-                break
-            end
-        end
-        if finish and LocalPlayer.Character then
-            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                root.CFrame = finish.CFrame + Vector3.new(0, 5, 0)
-            end
-        end
-    end); y = y + 38
-
-    content.Size = UDim2.new(1, 0, 0, y + 10)
-
-    openTohBtn = Instance.new("TextButton")
-    openTohBtn.Size = UDim2.new(0, 100, 0, 40)
-    openTohBtn.Position = UDim2.new(0.5, -50, 0.25, 0)
-    openTohBtn.BackgroundColor3 = Color3.fromRGB(255,200,0)
-    openTohBtn.Text = "TOH"
-    openTohBtn.TextColor3 = Color3.fromRGB(180,0,0)
-    openTohBtn.TextSize = 18
-    openTohBtn.Font = Enum.Font.GothamBold
-    openTohBtn.Visible = false
-    openTohBtn.Parent = gui
-    Instance.new("UICorner", openTohBtn).CornerRadius = UDim.new(0, 10)
-
-    makeDraggable(openTohBtn, openTohBtn)
-
-    minimizeBtn.MouseButton1Click:Connect(function()
-        tohFrame.Visible = false
-        openTohBtn.Position = UDim2.new(tohFrame.Position.X.Scale, tohFrame.Position.X.Offset + 110, tohFrame.Position.Y.Scale, tohFrame.Position.Y.Offset)
-        openTohBtn.Visible = true
-    end)
-
-    openTohBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local clickStart = input.Position
-            openTohBtn.InputEnded:Connect(function(input2)
-                if input2.UserInputType == Enum.UserInputType.MouseButton1 or input2.UserInputType == Enum.UserInputType.Touch then
-                    if (input2.Position - clickStart).Magnitude < 10 then
-                        openTohBtn.Visible = false
-                        tohFrame.Position = UDim2.new(openTohBtn.Position.X.Scale, openTohBtn.Position.X.Offset - 110, openTohBtn.Position.Y.Scale, openTohBtn.Position.Y.Offset)
-                        tohFrame.Visible = true
-                    end
+        task.spawn(function()
+            local uid = plr.UserId
+            if uid > 0 then
+                local ok, thumb = pcall(function()
+                    return Players:GetUserThumbnailAsync(uid, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+                end)
+                if ok and thumb then
+                    avatar.Image = thumb
                 end
-            end)
-        end
-    end)
-
-    closeBtn.MouseButton1Click:Connect(function()
-        tohFrame.Visible = false
-        if openTohBtn then openTohBtn.Visible = false end
-        gameListFrame.Visible = true
-    end)
+            end
+        end)
+        yP = yP + 40
+    end
+    tContent.Size = UDim2.new(1, 0, 0, yP)
+    tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
 end
+
+local function giveTornadoTool()
+    local player = LocalPlayer
+    local character = player.Character
+    if not character then return end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return end
+
+    local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
+    if oldTool then oldTool:Destroy() end
+
+    local tool = Instance.new("Tool")
+    tool.Name = "Tornado"
+    tool.RequiresHandle = false
+    tool.ToolTip = "Tornado – Teleports all players to you"
+    tool.Parent = backpack
+end
+
+local y = 0
+createToggle(mContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
+createInput(mContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
+    _G.AutoFarmDelay = math.clamp(val, 0.5, 3)
+end); y = y + 38
+
+local afModeBtn = createButton(mContent, y, "AF Mode: Fast", function()
+    if _G.AutoFarmMode == "Fast" then
+        _G.AutoFarmMode = "Slow"
+        afModeBtn.Text = "AF Mode: Slow"
+    else
+        _G.AutoFarmMode = "Fast"
+        afModeBtn.Text = "AF Mode: Fast"
+    end
+end)
+y = y + 38
+
+createToggle(mContent, y, "Fly", function(state)
+    _G.Fly = state
+    if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.PlatformStand = true
+    end
+end); y = y + 38
+createToggle(mContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
+
+targetSelectBtn = createButton(mContent, y, "Target: None", function()
+    createTargetWindow()
+end)
+y = y + 38
+
+createButton(mContent, y, "Teleport to Target", function()
+    if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = _G.SelectedTarget.Character.HumanoidRootPart.CFrame
+        end
+    end
+end); y = y + 38
+
+createToggle(mContent, y, "Teleport Always", function(state) _G.TeleportAlways = state end); y = y + 38
+
+createInput(mContent, y, "WalkSpeed", _G.WalkSpeed, function(val)
+    _G.WalkSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = val
+    end
+end); y = y + 38
+
+createInput(mContent, y, "JumpPower", _G.JumpPower, function(val)
+    _G.JumpPower = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = val
+    end
+end); y = y + 38
+
+createToggle(mContent, y, "Role ESP", function(state)
+    _G.ESPEnabled = state
+    if not state then
+        for _, v in pairs(ESP_objects) do
+            if v.box then v.box.Visible = false; v.box:Remove() end
+        end
+        table.clear(ESP_objects)
+    end
+end); y = y + 38
+
+createToggle(mContent, y, "ESP Gun", function(state) _G.GunESP = state end); y = y + 38
+
+createToggle(mContent, y, "Kill All", function(state) _G.KillAll = state end); y = y + 38
+
+createButton(mContent, y, "Tornado Tool", function()
+    giveTornadoTool()
+end); y = y + 38
+
+mContent.Size = UDim2.new(1, 0, 0, y + 10)
+mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
 -- ==================== Game Logic ====================
 -- Noclip
@@ -1124,7 +652,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Сохранение настроек
+-- Сохранение настроек при ресете
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -1139,58 +667,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid")
     hum.WalkSpeed = _G.WalkSpeed
     hum.JumpPower = _G.JumpPower
-end)
-
--- ==================== Tower of Hell особые эффекты ====================
--- Off Negative Effect: убирает экранные эффекты (инверсию, размытие и т.д.)
-RunService.RenderStepped:Connect(function()
-    if not _G.AntiNegative then return end
-    -- Попытка убрать пост-эффекты, установленные игрой (клиентская часть)
-    pcall(function()
-        local lighting = game:GetService("Lighting")
-        -- Сбрасываем типичные пост-эффекты
-        if lighting:FindFirstChild("ColorCorrection") then
-            lighting.ColorCorrection:Destroy()
-        end
-        if lighting:FindFirstChild("Blur") then
-            lighting.Blur:Destroy()
-        end
-        if lighting:FindFirstChild("Bloom") then
-            lighting.Bloom:Destroy()
-        end
-        if lighting:FindFirstChild("SunRays") then
-            lighting.SunRays:Destroy()
-        end
-        -- Можно добавить другие эффекты при необходимости
-    end)
-end)
-
--- Off Jump Effect: отключает принудительный прыжок
-RunService.RenderStepped:Connect(function()
-    if not _G.AntiJump then return end
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            -- Блокируем автоматические прыжки, просто сбрасываем Jump
-            hum.Jump = false
-            -- Устанавливаем JumpPower в 0, чтобы нельзя было прыгнуть, но лучше в очень маленькое, чтобы не ломать
-            hum.JumpPower = 0
-        end
-    end
-end)
-
--- Off Invisible Effect: делает персонажа видимым
-RunService.RenderStepped:Connect(function()
-    if not _G.AntiInvisible then return end
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.Transparency = 0
-            end
-        end
-    end
 end)
 
 -- ==================== ESP ====================
