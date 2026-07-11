@@ -532,7 +532,6 @@ function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
-    -- Выдача Tornado Tool (притягивает игроков, пока экипирован)
     local function giveTornadoTool()
         local player = LocalPlayer
         local character = player.Character
@@ -540,7 +539,6 @@ function createMM2Window()
         local backpack = player:FindFirstChild("Backpack")
         if not backpack then return end
 
-        -- Удаляем предыдущий Tornado, если есть
         local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
         if oldTool then oldTool:Destroy() end
 
@@ -1059,7 +1057,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Tornado Tool притяжение (пока держим в руках)
+-- Tornado Tool pull
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1076,7 +1074,7 @@ RunService.RenderStepped:Connect(function()
             local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
             if targetRoot then
                 local direction = (myRoot.Position - targetRoot.Position).Unit
-                targetRoot.Velocity = direction * 50  -- сила притяжения
+                targetRoot.Velocity = direction * 50
             end
         end
     end
