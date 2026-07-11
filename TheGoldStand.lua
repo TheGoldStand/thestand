@@ -204,6 +204,7 @@ end)
 gameListContent.Size = UDim2.new(1, 0, 0, 130)
 gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
 
+-- ==================== MM2 ====================
 local mm2Frame = nil
 local openMM2Btn = nil
 local targetWindow = nil
@@ -247,9 +248,24 @@ function createMM2Window()
     })
     mhGrad.Rotation = 90
 
+    local mBack = Instance.new("TextButton", mHeader)
+    mBack.Size = UDim2.new(0, 60, 1, 0)
+    mBack.Position = UDim2.new(0, 5, 0, 0)
+    mBack.BackgroundTransparency = 1
+    mBack.Text = "← Back"
+    mBack.TextColor3 = Color3.fromRGB(180,0,0)
+    mBack.Font = Enum.Font.GothamBold
+    mBack.TextSize = 13
+    mBack.MouseButton1Click:Connect(function()
+        mm2Frame.Visible = false
+        if openMM2Btn then openMM2Btn.Visible = false end
+        if targetWindow then targetWindow:Destroy(); targetWindow = nil end
+        gameListFrame.Visible = true
+    end)
+
     local mTitle = Instance.new("TextLabel", mHeader)
-    mTitle.Size = UDim2.new(1, -100, 1, 0)
-    mTitle.Position = UDim2.new(0, 40, 0, 0)
+    mTitle.Size = UDim2.new(1, -130, 1, 0)
+    mTitle.Position = UDim2.new(0, 70, 0, 0)
     mTitle.Text = "MM2 Script"
     mTitle.TextColor3 = Color3.fromRGB(180,0,0)
     mTitle.TextSize = 16
@@ -516,6 +532,31 @@ function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
+    -- Функция выдачи Fling Tool (заглушка, заменишь позже)
+    local function giveFlingTool()
+        local player = LocalPlayer
+        local character = player.Character
+        if not character then return end
+        local backpack = player:FindFirstChild("Backpack")
+        if not backpack then return end
+        -- Проверяем, нет ли уже такого тула
+        if backpack:FindFirstChild("FlingTool") or (character:FindFirstChild("FlingTool")) then return end
+
+        local tool = Instance.new("Tool")
+        tool.Name = "FlingTool"
+        tool.RequiresHandle = false
+        tool.ToolTip = "Fling Tool"
+        tool.Parent = backpack
+
+        local localScript = Instance.new("LocalScript")
+        localScript.Name = "FlingScript"
+        localScript.Source = [[
+-- Здесь будет локальный скрипт для флинга, замени позже
+print("Fling Tool activated")
+        ]]
+        localScript.Parent = tool
+    end
+
     local y = 0
     createToggle(mContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
     createInput(mContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
@@ -557,14 +598,14 @@ function createMM2Window()
 
     createToggle(mContent, y, "Teleport Always", function(state) _G.TeleportAlways = state end); y = y + 38
 
-    createInput(mContent, y, "WalkSpeed", 16, function(val)
+    createInput(mContent, y, "WalkSpeed", _G.WalkSpeed, function(val)
         _G.WalkSpeed = val
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = val
         end
     end); y = y + 38
 
-    createInput(mContent, y, "JumpPower", 50, function(val)
+    createInput(mContent, y, "JumpPower", _G.JumpPower, function(val)
         _G.JumpPower = val
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.JumpPower = val
@@ -584,6 +625,10 @@ function createMM2Window()
     createToggle(mContent, y, "ESP Gun", function(state) _G.GunESP = state end); y = y + 38
 
     createToggle(mContent, y, "Kill All", function(state) _G.KillAll = state end); y = y + 38
+
+    createButton(mContent, y, "Fling Tool", function()
+        giveFlingTool()
+    end); y = y + 38
 
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
@@ -624,13 +669,14 @@ function createMM2Window()
     end)
 
     mClose.MouseButton1Click:Connect(function()
-        if mm2Frame then mm2Frame:Destroy(); mm2Frame = nil end
-        if openMM2Btn then openMM2Btn:Destroy(); openMM2Btn = nil end
+        mm2Frame.Visible = false
+        if openMM2Btn then openMM2Btn.Visible = false end
         if targetWindow then targetWindow:Destroy(); targetWindow = nil end
+        gameListFrame.Visible = true
     end)
 end
 
--- ==================== Tower of Hell Window ====================
+-- ==================== Tower of Hell ====================
 local tohFrame = nil
 local openTohBtn = nil
 
@@ -673,9 +719,23 @@ function createTOHWindow()
     })
     hGrad.Rotation = 90
 
+    local backBtn = Instance.new("TextButton", header)
+    backBtn.Size = UDim2.new(0, 60, 1, 0)
+    backBtn.Position = UDim2.new(0, 5, 0, 0)
+    backBtn.BackgroundTransparency = 1
+    backBtn.Text = "← Back"
+    backBtn.TextColor3 = Color3.fromRGB(180,0,0)
+    backBtn.Font = Enum.Font.GothamBold
+    backBtn.TextSize = 13
+    backBtn.MouseButton1Click:Connect(function()
+        tohFrame.Visible = false
+        if openTohBtn then openTohBtn.Visible = false end
+        gameListFrame.Visible = true
+    end)
+
     local title = Instance.new("TextLabel", header)
-    title.Size = UDim2.new(1, -100, 1, 0)
-    title.Position = UDim2.new(0, 40, 0, 0)
+    title.Size = UDim2.new(1, -130, 1, 0)
+    title.Position = UDim2.new(0, 70, 0, 0)
     title.Text = "Tower of Hell"
     title.TextColor3 = Color3.fromRGB(180,0,0)
     title.TextSize = 16
@@ -851,8 +911,9 @@ function createTOHWindow()
     end)
 
     closeBtn.MouseButton1Click:Connect(function()
-        if tohFrame then tohFrame:Destroy(); tohFrame = nil end
-        if openTohBtn then openTohBtn:Destroy(); openTohBtn = nil end
+        tohFrame.Visible = false
+        if openTohBtn then openTohBtn.Visible = false end
+        gameListFrame.Visible = true
     end)
 end
 
@@ -1014,7 +1075,14 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ==================== ESP (Improved) ====================
+-- Применение сохранённых настроек при ресете персонажа
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.WalkSpeed = _G.WalkSpeed
+    hum.JumpPower = _G.JumpPower
+end)
+
+-- ==================== ESP ====================
 ESP_objects = {}
 local OriginalSheriff = nil
 
@@ -1039,7 +1107,6 @@ local function getRole(player)
     local char = player.Character
     if not char then return "Innocent" end
 
-    -- Check equipped tools
     for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") then
             local n = tool.Name:lower()
@@ -1047,7 +1114,6 @@ local function getRole(player)
         end
     end
 
-    -- Check backpack (inventory)
     local bp = player:FindFirstChild("Backpack")
     if bp then
         for _, tool in ipairs(bp:GetChildren()) do
@@ -1114,7 +1180,6 @@ end
 
 local gunESPbox = nil
 
--- ESP refresh every second
 task.spawn(function()
     while true do
         if _G.ESPEnabled then
