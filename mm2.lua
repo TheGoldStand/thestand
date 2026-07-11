@@ -1,9 +1,12 @@
 --[[
-    MM2 FULL MENU v11 (Enhanced):
-    - Spin Fling: только вращение на месте + отбрасывание других (сам не вылетаешь)
-    - Teleport Always: при включении постоянно телепортирует к выбранному таргету
-    - Выбор цели теперь в отдельном перетаскиваемом окне с аватарками
-    - Все предыдущие функции сохранены
+    MM2 FULL MENU v12 (Fling, TeleportAlways push, AutoFarm Fast/Slow, Radio, No AutoShoot)
+    - Real Fling: телепорт к цели + отбрасывание
+    - Teleport Always + отбрасывание цели
+    - AutoFarm: выбор Fast (телепорт) / Slow (ходьба)
+    - Take Gun: подбор пистолета с земли
+    - Radio: отдельное окно с вводом ID и плеером
+    - AutoShoot убран полностью
+    - Окно выбора цели отдельное, перетаскиваемое
 ]]
 
 local Players = game:GetService("Players")
@@ -16,6 +19,7 @@ local Camera = Workspace.CurrentCamera
 -- Глобальные переменные
 _G.AutoFarm = false
 _G.AutoFarmDelay = 2
+_G.AutoFarmMode = "Fast"          -- "Fast" или "Slow"
 _G.Fly = false
 _G.Noclip = false
 _G.Fling = false
@@ -24,10 +28,8 @@ _G.SelectedTarget = nil
 _G.WalkSpeed = 16
 _G.JumpPower = 50
 _G.ESPRefresh = false
-_G.AutoShoot = false
-_G.AutoShootButton = nil
-_G.KillAllActive = false
 _G.TeleportAlways = false
+_G.KillAllActive = false
 
 -- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
@@ -35,7 +37,7 @@ gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм с UIStroke
+-- Главный фрейм
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 450)
 mainFrame.Position = UDim2.new(0.5, -150, 0.1, 0)
@@ -46,7 +48,7 @@ mainFrame.ClipsDescendants = true
 mainFrame.Active = true
 mainFrame.Parent = gui
 
--- Мерцающая золотая обводка
+-- Мерцающая обводка
 local stroke = Instance.new("UIStroke", mainFrame)
 stroke.Thickness = 2
 stroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -67,7 +69,7 @@ end)
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 14)
 
--- Жёлтый заголовок с красным текстом
+-- Жёлтый заголовок
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 36)
 header.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
@@ -308,7 +310,6 @@ local tStroke = Instance.new("UIStroke", targetWindow)
 tStroke.Color = Color3.fromRGB(255, 200, 0)
 tStroke.Thickness = 2
 
--- Заголовок окна (за него перетаскиваем)
 local targetHeader = Instance.new("Frame", targetWindow)
 targetHeader.Size = UDim2.new(1, 0, 0, 30)
 targetHeader.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
@@ -331,7 +332,6 @@ thTitle.TextSize = 14
 thTitle.BackgroundTransparency = 1
 thTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- Кнопка закрытия
 local closeTargetBtn = Instance.new("TextButton", targetHeader)
 closeTargetBtn.Size = UDim2.new(0, 30, 1, 0)
 closeTargetBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -344,10 +344,8 @@ closeTargetBtn.MouseButton1Click:Connect(function()
     targetWindow.Visible = false
 end)
 
--- Перетаскивание окна за заголовок
 makeDraggable(targetHeader, targetWindow)
 
--- ScrollingFrame для списка
 local tScroll = Instance.new("ScrollingFrame", targetWindow)
 tScroll.Size = UDim2.new(1, 0, 1, -30)
 tScroll.Position = UDim2.new(0, 0, 0, 30)
@@ -379,7 +377,6 @@ local function refreshTargetList()
         local eCorner = Instance.new("UICorner", entry)
         eCorner.CornerRadius = UDim.new(0, 6)
 
-        -- Аватарка
         local avatar = Instance.new("ImageLabel", entry)
         avatar.Size = UDim2.new(0, 28, 0, 28)
         avatar.Position = UDim2.new(0, 5, 0.5, -14)
@@ -398,7 +395,6 @@ local function refreshTargetList()
         nameLabel.BackgroundTransparency = 1
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-        -- Подсветка, если выбран
         if _G.SelectedTarget == plr then
             entry.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
         end
@@ -406,13 +402,11 @@ local function refreshTargetList()
         entry.MouseButton1Click:Connect(function()
             _G.SelectedTarget = plr
             targetWindow.Visible = false
-            -- Обновим текст на кнопке выбора в главном меню (будет хранить ссылку)
             if targetSelectBtn then
                 targetSelectBtn.Text = "Target: " .. plr.Name
             end
         end)
 
-        -- Загрузка аватарки
         task.spawn(function()
             local userId = plr.UserId
             if userId <= 0 then return end
@@ -430,7 +424,6 @@ local function refreshTargetList()
     tScroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
 end
 
--- Закрытие окна при клике вне его (глобальный слушатель)
 UIS.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         if targetWindow.Visible then
@@ -438,7 +431,6 @@ UIS.InputBegan:Connect(function(input)
             local absPos = targetWindow.AbsolutePosition
             local absSize = targetWindow.AbsoluteSize
             if pos.X < absPos.X or pos.X > absPos.X + absSize.X or pos.Y < absPos.Y or pos.Y > absPos.Y + absSize.Y then
-                -- Не закрываем, если клик по кнопке открытия списка
                 local btnAbsPos = targetSelectBtn and targetSelectBtn.AbsolutePosition
                 local btnAbsSize = targetSelectBtn and targetSelectBtn.AbsoluteSize
                 if not (btnAbsPos and pos.X >= btnAbsPos.X and pos.X <= btnAbsPos.X + btnAbsSize.X and pos.Y >= btnAbsPos.Y and pos.Y <= btnAbsPos.Y + btnAbsSize.Y) then
@@ -449,12 +441,129 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
+-- ==================== Окно Radio ====================
+local radioWindow = Instance.new("Frame")
+radioWindow.Size = UDim2.new(0, 250, 0, 120)
+radioWindow.Position = UDim2.new(0.5, -125, 0.35, 0)
+radioWindow.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+radioWindow.BorderSizePixel = 0
+radioWindow.Visible = false
+radioWindow.Active = true
+radioWindow.Parent = gui
+local rCorner = Instance.new("UICorner", radioWindow)
+rCorner.CornerRadius = UDim.new(0, 10)
+local rStroke = Instance.new("UIStroke", radioWindow)
+rStroke.Color = Color3.fromRGB(255, 200, 0)
+rStroke.Thickness = 2
+
+local radioHeader = Instance.new("Frame", radioWindow)
+radioHeader.Size = UDim2.new(1, 0, 0, 30)
+radioHeader.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+local rhCorner = Instance.new("UICorner", radioHeader)
+rhCorner.CornerRadius = UDim.new(0, 10)
+local rhGradient = Instance.new("UIGradient", radioHeader)
+rhGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+})
+rhGradient.Rotation = 90
+
+local rhTitle = Instance.new("TextLabel", radioHeader)
+rhTitle.Size = UDim2.new(1, -30, 1, 0)
+rhTitle.Position = UDim2.new(0, 10, 0, 0)
+rhTitle.Text = "🎵 Radio"
+rhTitle.TextColor3 = Color3.fromRGB(180, 0, 0)
+rhTitle.Font = Enum.Font.GothamBold
+rhTitle.TextSize = 14
+rhTitle.BackgroundTransparency = 1
+rhTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeRadioBtn = Instance.new("TextButton", radioHeader)
+closeRadioBtn.Size = UDim2.new(0, 30, 1, 0)
+closeRadioBtn.Position = UDim2.new(1, -30, 0, 0)
+closeRadioBtn.BackgroundTransparency = 1
+closeRadioBtn.Text = "✕"
+closeRadioBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
+closeRadioBtn.Font = Enum.Font.GothamBold
+closeRadioBtn.TextSize = 16
+closeRadioBtn.MouseButton1Click:Connect(function()
+    radioWindow.Visible = false
+end)
+
+makeDraggable(radioHeader, radioWindow)
+
+local radioInput = Instance.new("TextBox", radioWindow)
+radioInput.Size = UDim2.new(0, 150, 0, 30)
+radioInput.Position = UDim2.new(0, 10, 0, 40)
+radioInput.Text = "1837897837"
+radioInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+radioInput.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+radioInput.Font = Enum.Font.GothamBold
+radioInput.TextSize = 13
+radioInput.BorderSizePixel = 0
+Instance.new("UICorner", radioInput).CornerRadius = UDim.new(0, 5)
+
+local radioPlayBtn = Instance.new("TextButton", radioWindow)
+radioPlayBtn.Size = UDim2.new(0, 70, 0, 30)
+radioPlayBtn.Position = UDim2.new(0, 170, 0, 40)
+radioPlayBtn.Text = "▶ Play"
+radioPlayBtn.TextColor3 = Color3.new(1, 1, 1)
+radioPlayBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+radioPlayBtn.Font = Enum.Font.GothamBold
+radioPlayBtn.TextSize = 13
+radioPlayBtn.BorderSizePixel = 0
+Instance.new("UICorner", radioPlayBtn).CornerRadius = UDim.new(0, 5)
+
+local currentRadioSound = nil
+local radioPlayConnection
+
+radioPlayBtn.MouseButton1Click:Connect(function()
+    if radioPlayConnection then radioPlayConnection:Disconnect(); radioPlayConnection = nil end
+    local id = tonumber(radioInput.Text)
+    if not id then return end
+    if currentRadioSound then
+        currentRadioSound:Stop()
+        currentRadioSound:Destroy()
+        currentRadioSound = nil
+    end
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. id
+    sound.Volume = 5
+    sound.Parent = LocalPlayer.PlayerGui
+    sound:Play()
+    currentRadioSound = sound
+    radioPlayBtn.Text = "⏹ Stop"
+    radioPlayBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    radioPlayConnection = radioPlayBtn.MouseButton1Click:Connect(function()
+        if currentRadioSound then
+            currentRadioSound:Stop()
+            currentRadioSound:Destroy()
+            currentRadioSound = nil
+            radioPlayBtn.Text = "▶ Play"
+            radioPlayBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            if radioPlayConnection then radioPlayConnection:Disconnect(); radioPlayConnection = nil end
+        end
+    end)
+end)
+
 -- ===== Построение меню =====
 local y = 0
 createToggle(scrollContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
 createInputControl(scrollContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
     _G.AutoFarmDelay = math.clamp(val, 0.5, 5)
 end); y = y + 38
+
+-- Кнопка переключения режима Auto Farm
+local afModeBtn = createButton(scrollContent, y, "AF Mode: Fast", function()
+    if _G.AutoFarmMode == "Fast" then
+        _G.AutoFarmMode = "Slow"
+        afModeBtn.Text = "AF Mode: Slow"
+    else
+        _G.AutoFarmMode = "Fast"
+        afModeBtn.Text = "AF Mode: Fast"
+    end
+end)
+y = y + 38
 
 createToggle(scrollContent, y, "Fly", function(state)
     _G.Fly = state
@@ -464,14 +573,9 @@ createToggle(scrollContent, y, "Fly", function(state)
 end); y = y + 38
 createToggle(scrollContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
--- Кнопка "Select Target", открывающая окно
 local targetSelectBtn = createButton(scrollContent, y, "Target: None", function()
-    if targetWindow.Visible then
-        targetWindow.Visible = false
-    else
-        refreshTargetList()
-        targetWindow.Visible = true
-    end
+    if targetWindow.Visible then targetWindow.Visible = false
+    else refreshTargetList(); targetWindow.Visible = true end
 end)
 y = y + 38
 
@@ -484,11 +588,9 @@ createButton(scrollContent, y, "Teleport to Target", function()
     end
 end); y = y + 38
 
-createToggle(scrollContent, y, "Teleport Always", function(state)
-    _G.TeleportAlways = state
-end); y = y + 38
+createToggle(scrollContent, y, "Teleport Always", function(state) _G.TeleportAlways = state end); y = y + 38
 
-createToggle(scrollContent, y, "Spin Fling", function(state) _G.Fling = state end); y = y + 38
+createToggle(scrollContent, y, "Real Fling", function(state) _G.Fling = state end); y = y + 38
 
 createInputControl(scrollContent, y, "WalkSpeed", 16, function(val)
     _G.WalkSpeed = val
@@ -509,11 +611,6 @@ createToggle(scrollContent, y, "Role ESP", function(state)
     if not state then clearESP() end
 end); y = y + 38
 
-createToggle(scrollContent, y, "AutoShoot", function(state)
-    _G.AutoShoot = state
-    if state then createAutoShootButton() else destroyAutoShootButton() end
-end); y = y + 38
-
 createButton(scrollContent, y, "Kill All", function()
     if not _G.KillAllActive then
         _G.KillAllActive = true
@@ -523,47 +620,11 @@ end); y = y + 38
 
 createButton(scrollContent, y, "Take Gun", function() takeGun() end); y = y + 38
 
--- Music Player
-local musicFrame = Instance.new("Frame")
-musicFrame.Size = UDim2.new(1, -24, 0, 50)
-musicFrame.Position = UDim2.new(0, 12, 0, y)
-musicFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-musicFrame.BorderSizePixel = 0
-Instance.new("UICorner", musicFrame).CornerRadius = UDim.new(0, 8)
-musicFrame.Parent = scrollContent
+createButton(scrollContent, y, "🎵 Radio", function()
+    radioWindow.Visible = not radioWindow.Visible
+end); y = y + 38
 
-local musicLabel = Instance.new("TextLabel", musicFrame)
-musicLabel.Size = UDim2.new(1, 0, 0, 18)
-musicLabel.Position = UDim2.new(0, 8, 0, 5)
-musicLabel.Text = "🎵 Music ID"
-musicLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-musicLabel.Font = Enum.Font.GothamBold
-musicLabel.TextSize = 12
-musicLabel.BackgroundTransparency = 1
-
-local musicInput = Instance.new("TextBox", musicFrame)
-musicInput.Size = UDim2.new(0, 140, 0, 22)
-musicInput.Position = UDim2.new(0, 8, 0, 23)
-musicInput.Text = "1837897837"
-musicInput.TextColor3 = Color3.new(1, 1, 1)
-musicInput.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
-musicInput.Font = Enum.Font.GothamBold
-musicInput.TextSize = 12
-musicInput.BorderSizePixel = 0
-Instance.new("UICorner", musicInput).CornerRadius = UDim.new(0, 5)
-
-local playBtn = Instance.new("TextButton", musicFrame)
-playBtn.Size = UDim2.new(0, 60, 0, 22)
-playBtn.Position = UDim2.new(1, -68, 0, 23)
-playBtn.Text = "▶ Play"
-playBtn.TextColor3 = Color3.new(1, 1, 1)
-playBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-playBtn.Font = Enum.Font.GothamBold
-playBtn.TextSize = 12
-playBtn.BorderSizePixel = 0
-Instance.new("UICorner", playBtn).CornerRadius = UDim.new(0, 5)
-
-y = y + 55
+-- Обновление размера скролла
 scrollContent.Size = UDim2.new(1, 0, 0, y + 10)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, scrollContent.Size.Y.Offset)
 
@@ -583,43 +644,33 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Spin Fling (вращение на месте + отбрасывание приближающихся)
+-- Real Fling
 RunService.Stepped:Connect(function()
     if not _G.Fling then return end
+    if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
+    local targetChar = _G.SelectedTarget.Character
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
     local char = LocalPlayer.Character
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChild("Humanoid")
     if not root or not hum then return end
-    hum.PlatformStand = true
-    root.RotVelocity = Vector3.new(0, 2000, 0)  -- только вращение
 
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        local targetChar = plr.Character
-        if targetChar then
-            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-            if targetRoot then
-                local dist = (root.Position - targetRoot.Position).Magnitude
-                if dist <= 15 then
-                    targetRoot.Velocity = Vector3.new(
-                        math.random(-3000, 3000),
-                        math.random(4000, 8000),
-                        math.random(-3000, 3000)
-                    )
-                end
-            end
-        end
-    end
+    hum.PlatformStand = true
+    root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)  -- чуть впереди
+    root.RotVelocity = Vector3.new(0, 2000, 0)  -- вращение
+    targetRoot.Velocity = Vector3.new(math.random(-3000,3000), 5000, math.random(-3000,3000))  -- отбрасываем
 end)
 
--- Auto Farm (с задержкой)
+-- Auto Farm (с режимами)
 task.spawn(function()
     while true do
         if _G.AutoFarm then
             local char = LocalPlayer.Character
             if char then
                 local root = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChild("Humanoid")
                 if root then
                     local coins = {}
                     for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -644,10 +695,26 @@ task.spawn(function()
                         table.sort(coins, function(a, b) return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude end)
                         for _, coin in ipairs(coins) do
                             if not _G.AutoFarm then break end
-                            local currentChar = LocalPlayer.Character
-                            if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                                currentChar.HumanoidRootPart.CFrame = coin.CFrame
-                                task.wait(_G.AutoFarmDelay)
+                            if _G.AutoFarmMode == "Fast" then
+                                -- телепорт
+                                local currentChar = LocalPlayer.Character
+                                if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+                                    currentChar.HumanoidRootPart.CFrame = coin.CFrame
+                                    task.wait(_G.AutoFarmDelay)
+                                end
+                            else
+                                -- Slow: идём к монете
+                                local currentChar = LocalPlayer.Character
+                                if currentChar and hum and hum.Health > 0 then
+                                    hum:MoveTo(coin.Position)
+                                    -- ждём, пока расстояние станет < 5 или таймаут
+                                    local startTime = tick()
+                                    while (root.Position - coin.Position).Magnitude > 5 and tick() - startTime < 5 do
+                                        if not _G.AutoFarm then break end
+                                        task.wait(0.1)
+                                    end
+                                    task.wait(_G.AutoFarmDelay)
+                                end
                             end
                         end
                     else
@@ -687,7 +754,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Teleport Always
+-- Teleport Always с отбрасыванием цели
 RunService.RenderStepped:Connect(function()
     if not _G.TeleportAlways then return end
     if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
@@ -696,63 +763,12 @@ RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CFrame = targetRoot.CFrame
-    end
-end)
-
--- AutoShoot кнопка
-function createAutoShootButton()
-    if _G.AutoShootButton then return end
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 120, 0, 45)
-    btn.Position = UDim2.new(0.8, -60, 0.5, -22)
-    btn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    btn.Text = "🔫 SHOOT"
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Parent = gui
-
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 12)
-    makeDraggable(btn, btn)
-
-    btn.MouseButton1Click:Connect(function()
-        shootMurderer()
-    end)
-
-    _G.AutoShootButton = btn
-end
-
-function destroyAutoShootButton()
-    if _G.AutoShootButton then
-        _G.AutoShootButton:Destroy()
-        _G.AutoShootButton = nil
-    end
-end
-
-function shootMurderer()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool or not (tool.Name:lower():find("gun") or tool.Name:lower():find("sheriff") or tool.Name:lower():find("pistol")) then return end
-
-    local murderer = nil
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        local role = getRole(plr)
-        if role == "Murderer" then murderer = plr break end
-    end
-    if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Head") then return end
-    local head = murderer.Character.Head
-    local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-    root.CFrame = CFrame.new(root.Position, head.Position)
-    tool:Activate()
-end
+
+    root.CFrame = targetRoot.CFrame
+    -- Отбрасываем цель
+    targetRoot.Velocity = Vector3.new(math.random(-500,500), 500, math.random(-500,500))
+end)
 
 -- Kill All
 function killAll()
@@ -773,18 +789,21 @@ function killAll()
     end
 end
 
--- Take Gun
+-- Take Gun (подбираем пистолет с земли)
 function takeGun()
     local gun = nil
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Tool") and (obj.Name:lower():find("gun") or obj.Name:lower():find("pistol") or obj.Name:lower():find("sheriff")) then
-            gun = obj
-            break
+            -- Проверяем, что он не в рюкзаке и не у персонажа (лежит в Workspace)
+            if obj.Parent == Workspace then
+                gun = obj
+                break
+            end
         end
     end
     if not gun then return end
-    local handle = gun:FindFirstChild("Handle") or gun.Parent
-    local pos = handle and handle.Position or gun.Position
+    local handle = gun:FindFirstChild("Handle") or gun
+    local pos = handle.Position
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     char.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
@@ -896,32 +915,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     roleESPfunctions = {}
 end)
 
--- Music Player
-local currentSound = nil
-local playConnection
-playBtn.MouseButton1Click:Connect(function()
-    if playConnection then playConnection:Disconnect(); playConnection = nil end
-    local id = tonumber(musicInput.Text)
-    if not id then return end
-    if currentSound then currentSound:Stop(); currentSound:Destroy(); currentSound = nil end
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://" .. id
-    sound.Volume = 5
-    sound.Parent = LocalPlayer.PlayerGui
-    sound:Play()
-    currentSound = sound
-    playBtn.Text = "⏹ Stop"
-    playBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    playConnection = playBtn.MouseButton1Click:Connect(function()
-        if currentSound then
-            currentSound:Stop(); currentSound:Destroy(); currentSound = nil
-            playBtn.Text = "▶ Play"
-            playBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            if playConnection then playConnection:Disconnect(); playConnection = nil end
-        end
-    end)
-end)
-
 -- Сброс при выключении флинга/полёта
 RunService.Stepped:Connect(function()
     if not _G.Fling and not _G.Fly then
@@ -935,4 +928,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("✅ MM2 Script v11 / BY TheG0ldStand — Teleport Always, отдельное окно выбора цели, Spin Fling fix.")
+print("✅ MM2 Script v12 — Real Fling, TeleportAlways push, AutoFarm Fast/Slow, Radio, Take Gun с земли.")
