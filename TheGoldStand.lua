@@ -529,4 +529,442 @@ radioHeader.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 Instance.new("UICorner", radioHeader).CornerRadius = UDim.new(0, 10)
 local rhGradient = Instance.new("UIGradient", radioHeader)
 rhGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 2
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+})
+local rhTitle = Instance.new("TextLabel", radioHeader)
+rhTitle.Size = UDim2.new(1, -30, 1, 0)
+rhTitle.Position = UDim2.new(0, 10, 0, 0)
+rhTitle.Text = "🎵 Radio"
+rhTitle.TextColor3 = Color3.fromRGB(180, 0, 0)
+rhTitle.Font = Enum.Font.GothamBold
+rhTitle.TextSize = 14
+rhTitle.BackgroundTransparency = 1
+
+local closeRadioBtn = Instance.new("TextButton", radioHeader)
+closeRadioBtn.Size = UDim2.new(0, 30, 1, 0)
+closeRadioBtn.Position = UDim2.new(1, -30, 0, 0)
+closeRadioBtn.BackgroundTransparency = 1
+closeRadioBtn.Text = "✕"
+closeRadioBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
+closeRadioBtn.Font = Enum.Font.GothamBold
+closeRadioBtn.TextSize = 16
+closeRadioBtn.MouseButton1Click:Connect(function() radioWindow.Visible = false end)
+
+makeDraggable(radioHeader, radioWindow)
+
+local radioInput = Instance.new("TextBox", radioWindow)
+radioInput.Size = UDim2.new(0, 150, 0, 30)
+radioInput.Position = UDim2.new(0, 10, 0, 40)
+radioInput.Text = "1837897837"
+radioInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+radioInput.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+radioInput.Font = Enum.Font.GothamBold
+radioInput.TextSize = 13
+radioInput.BorderSizePixel = 0
+Instance.new("UICorner", radioInput).CornerRadius = UDim.new(0, 5)
+
+local radioPlayBtn = Instance.new("TextButton", radioWindow)
+radioPlayBtn.Size = UDim2.new(0, 70, 0, 30)
+radioPlayBtn.Position = UDim2.new(0, 170, 0, 40)
+radioPlayBtn.Text = "▶ Play"
+radioPlayBtn.TextColor3 = Color3.new(1, 1, 1)
+radioPlayBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+radioPlayBtn.Font = Enum.Font.GothamBold
+radioPlayBtn.TextSize = 13
+radioPlayBtn.BorderSizePixel = 0
+Instance.new("UICorner", radioPlayBtn).CornerRadius = UDim.new(0, 5)
+
+local currentRadioSound = nil
+local radioPlayConnection
+radioPlayBtn.MouseButton1Click:Connect(function()
+    if radioPlayConnection then radioPlayConnection:Disconnect(); radioPlayConnection = nil end
+    local id = tonumber(radioInput.Text)
+    if not id then return end
+    if currentRadioSound then currentRadioSound:Stop(); currentRadioSound:Destroy(); currentRadioSound = nil end
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. id
+    sound.Volume = 5
+    sound.Parent = LocalPlayer.PlayerGui
+    sound:Play()
+    currentRadioSound = sound
+    radioPlayBtn.Text = "⏹ Stop"
+    radioPlayBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    radioPlayConnection = radioPlayBtn.MouseButton1Click:Connect(function()
+        if currentRadioSound then
+            currentRadioSound:Stop(); currentRadioSound:Destroy(); currentRadioSound = nil
+            radioPlayBtn.Text = "▶ Play"
+            radioPlayBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            if radioPlayConnection then radioPlayConnection:Disconnect(); radioPlayConnection = nil end
+        end
+    end)
+end)
+
+-- ==================== Сборка MM2 UI ====================
+local y = 0
+createToggle(mm2Content, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
+createInputControl(mm2Content, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
+    _G.AutoFarmDelay = math.clamp(val, 0.5, 5)
+end); y = y + 38
+
+local afModeBtn = createButton(mm2Content, y, "AF Mode: Fast", function()
+    if _G.AutoFarmMode == "Fast" then
+        _G.AutoFarmMode = "Slow"
+        afModeBtn.Text = "AF Mode: Slow"
+    else
+        _G.AutoFarmMode = "Fast"
+        afModeBtn.Text = "AF Mode: Fast"
+    end
+end)
+y = y + 38
+
+createToggle(mm2Content, y, "Fly", function(state)
+    _G.Fly = state
+    if state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.PlatformStand = true
+    end
+end); y = y + 38
+createToggle(mm2Content, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
+
+local targetSelectBtn = createButton(mm2Content, y, "Target: None", function()
+    if targetWindow.Visible then targetWindow.Visible = false
+    else refreshTargetList(); targetWindow.Visible = true end
+end)
+y = y + 38
+
+createButton(mm2Content, y, "Teleport to Target", function()
+    if _G.SelectedTarget and _G.SelectedTarget.Character and _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = _G.SelectedTarget.Character.HumanoidRootPart.CFrame
+        end
+    end
+end); y = y + 38
+
+createToggle(mm2Content, y, "Teleport Always", function(state) _G.TeleportAlways = state end); y = y + 38
+createToggle(mm2Content, y, "Real Fling", function(state) _G.Fling = state end); y = y + 38
+
+createInputControl(mm2Content, y, "WalkSpeed", 16, function(val)
+    _G.WalkSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = val
+    end
+end); y = y + 38
+
+createInputControl(mm2Content, y, "JumpPower", 50, function(val)
+    _G.JumpPower = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = val
+    end
+end); y = y + 38
+
+createToggle(mm2Content, y, "Role ESP", function(state)
+    _G.ESPEnabled = state
+    if not state then clearESP() end
+end); y = y + 38
+
+createButton(mm2Content, y, "Kill All", function()
+    if not _G.KillAllActive then
+        _G.KillAllActive = true
+        task.spawn(function() killAll(); _G.KillAllActive = false end)
+    end
+end); y = y + 38
+
+createButton(mm2Content, y, "Take Gun", function() takeGun() end); y = y + 38
+
+createButton(mm2Content, y, "🎵 Radio", function()
+    radioWindow.Visible = not radioWindow.Visible
+end); y = y + 38
+
+mm2Content.Size = UDim2.new(1, 0, 0, y + 10)
+mm2Scroll.CanvasSize = UDim2.new(0, 0, 0, mm2Content.Size.Y.Offset)
+
+-- ==================== Логика функций MM2 ====================
+
+-- Noclip
+RunService.Stepped:Connect(function()
+    if _G.Noclip then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+            end
+        end
+    end
+end)
+
+-- Real Fling
+RunService.Stepped:Connect(function()
+    if not _G.Fling then return end
+    if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
+    local targetRoot = _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if not root or not hum then return end
+
+    hum.PlatformStand = true
+    root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
+    root.RotVelocity = Vector3.new(0, 2000, 0)
+    targetRoot.Velocity = Vector3.new(math.random(-3000,3000), 5000, math.random(-3000,3000))
+end)
+
+-- Auto Farm
+task.spawn(function()
+    while true do
+        if _G.AutoFarm then
+            local char = LocalPlayer.Character
+            if char then
+                local root = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChild("Humanoid")
+                if root then
+                    local coins = {}
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "Coin_Server") then table.insert(coins, obj) end
+                    end
+                    for _, folderName in ipairs({"Coins", "CoinContainer", "CoinFolder", "ServerCoins"}) do
+                        local folder = Workspace:FindFirstChild(folderName)
+                        if folder then
+                            for _, obj in ipairs(folder:GetDescendants()) do
+                                if obj:IsA("BasePart") then table.insert(coins, obj) end
+                            end
+                        end
+                    end
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if obj:IsA("Model") and (obj.Name == "Coin" or obj:FindFirstChild("Coin")) then
+                            local prim = obj.PrimaryPart or obj:FindFirstChild("Coin") or obj:FindFirstChildOfClass("BasePart")
+                            if prim then table.insert(coins, prim) end
+                        end
+                    end
+
+                    if #coins > 0 then
+                        table.sort(coins, function(a, b) return (root.Position - a.Position).Magnitude < (root.Position - b.Position).Magnitude end)
+                        for _, coin in ipairs(coins) do
+                            if not _G.AutoFarm then break end
+                            if _G.AutoFarmMode == "Fast" then
+                                local currentChar = LocalPlayer.Character
+                                if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
+                                    currentChar.HumanoidRootPart.CFrame = coin.CFrame
+                                    task.wait(_G.AutoFarmDelay)
+                                end
+                            else
+                                local currentChar = LocalPlayer.Character
+                                if currentChar and hum and hum.Health > 0 then
+                                    hum:MoveTo(coin.Position)
+                                    local startTime = tick()
+                                    while (root.Position - coin.Position).Magnitude > 5 and tick() - startTime < 5 do
+                                        if not _G.AutoFarm then break end
+                                        task.wait(0.1)
+                                    end
+                                    task.wait(_G.AutoFarmDelay)
+                                end
+                            end
+                        end
+                    else
+                        task.wait(0.5)
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- Fly
+local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+RunService.RenderStepped:Connect(function()
+    if not _G.Fly then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then hum.PlatformStand = true end
+
+    local moveVector = PlayerModule:GetControls():GetMoveVector()
+    local moveDirection = Vector3.new()
+    if moveVector.Magnitude > 0 then
+        moveDirection = (Camera.CFrame.RightVector * moveVector.X) + (Camera.CFrame.LookVector * -moveVector.Z)
+    end
+    if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0, 1, 0) end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection -= Vector3.new(0, 1, 0) end
+
+    if moveDirection.Magnitude > 0 then
+        root.CFrame = root.CFrame + moveDirection.Unit * 1.5
+        root.Velocity = Vector3.new(0, 0, 0)
+    else
+        root.Velocity = Vector3.new(0, 0, 0)
+    end
+end)
+
+-- Teleport Always с отбрасыванием
+RunService.RenderStepped:Connect(function()
+    if not _G.TeleportAlways then return end
+    if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
+    local targetRoot = _G.SelectedTarget.Character:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.CFrame = targetRoot.CFrame
+    targetRoot.Velocity = Vector3.new(math.random(-500,500), 500, math.random(-500,500))
+end)
+
+-- Kill All
+function killAll()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool or not tool.Name:lower():find("knife") then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local targetChar = plr.Character
+        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            root.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+            tool:Activate()
+            task.wait(0.1)
+        end
+    end
+end
+
+-- Take Gun (с земли)
+function takeGun()
+    local gun = nil
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Tool") and (obj.Name:lower():find("gun") or obj.Name:lower():find("pistol") or obj.Name:lower():find("sheriff")) then
+            if obj.Parent == Workspace then gun = obj break end
+        end
+    end
+    if not gun then return end
+    local handle = gun:FindFirstChild("Handle") or gun
+    local pos = handle.Position
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    char.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
+    task.wait(0.3)
+    if gun.Parent ~= LocalPlayer.Backpack and gun.Parent ~= char then
+        pcall(function() gun.Parent = LocalPlayer.Backpack end)
+    end
+end
+
+-- ==================== ESP ====================
+local drawingCache = {}
+function clearESP()
+    for _, obj in ipairs(drawingCache) do
+        if obj.box then obj.box.Visible = false; obj.box:Remove() end
+    end
+    table.clear(drawingCache)
+end
+
+function getRole(player)
+    local char = player.Character
+    if char then
+        for _, child in ipairs(char:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = child.Name:lower()
+                if name:find("knife") or name:find("murder") then return "Murderer"
+                elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
+            end
+        end
+    end
+    local bp = player:FindFirstChild("Backpack")
+    if bp then
+        for _, child in ipairs(bp:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = child.Name:lower()
+                if name:find("knife") or name:find("murder") then return "Murderer"
+                elseif name:find("gun") or name:find("sheriff") or name:find("pistol") then return "Sheriff" end
+            end
+        end
+    end
+    return "Innocent"
+end
+
+function createESPBox(target, color)
+    local box = Drawing.new("Square")
+    box.Color = color
+    box.Thickness = 2
+    box.Filled = false
+    box.Visible = false
+
+    local function update()
+        pcall(function()
+            local char = target.Character
+            if not char then box.Visible = false; return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head")
+            if not root or not head then box.Visible = false; return end
+            local cam = Workspace.CurrentCamera
+            local pos, onScreen = cam:WorldToViewportPoint(root.Position)
+            if onScreen then
+                local headPos = cam:WorldToViewportPoint(head.Position)
+                local height = (pos - headPos).Magnitude * 1.2
+                local width = height * 0.55
+                box.Size = Vector2.new(width, height)
+                box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+                box.Visible = true
+            else
+                box.Visible = false
+            end
+        end)
+    end
+    table.insert(drawingCache, {box = box, update = update})
+    return update
+end
+
+local roleESPfunctions = {}
+task.spawn(function()
+    while true do
+        if _G.ESPEnabled then _G.ESPRefresh = true end
+        task.wait(1)
+    end
+end)
+RunService.RenderStepped:Connect(function()
+    if not _G.ESPEnabled then return end
+    if _G.ESPRefresh then
+        _G.ESPRefresh = false
+        clearESP()
+        roleESPfunctions = {}
+    end
+    local newESP = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            if roleESPfunctions[plr] then
+                newESP[plr] = roleESPfunctions[plr]
+            else
+                local role = getRole(plr)
+                local color = Color3.fromRGB(80, 200, 80)
+                if role == "Murderer" then color = Color3.fromRGB(255, 50, 50)
+                elseif role == "Sheriff" then color = Color3.fromRGB(50, 150, 255) end
+                newESP[plr] = createESPBox(plr, color)
+            end
+        end
+    end
+    roleESPfunctions = newESP
+    for _, func in pairs(roleESPfunctions) do func() end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    clearESP()
+    roleESPfunctions = {}
+end)
+
+-- Сброс PlatformStand при отключении Fly/Fling
+RunService.Stepped:Connect(function()
+    if not _G.Fling and not _G.Fly then
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if hum then hum.PlatformStand = false end
+            if root then root.RotVelocity = Vector3.new(0, 0, 0) end
+        end
+    end
+end)
+
+print("✅ The G0ld Stand HUB v1.0 загружен! Выберите игру в меню.")
