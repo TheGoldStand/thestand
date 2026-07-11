@@ -89,7 +89,6 @@ closeBtn.TextColor3 = Color3.fromRGB(180,0,0)
 closeBtn.TextSize = 18
 closeBtn.Font = Enum.Font.GothamBold
 
--- Плавающая кнопка для разворачивания хаба
 local openHubBtn = Instance.new("TextButton")
 openHubBtn.Size = UDim2.new(0, 100, 0, 40)
 openHubBtn.Position = UDim2.new(0.5, -50, 0.2, 0)
@@ -146,23 +145,6 @@ local function animateHub(show)
     end
 end
 
--- Анимация окна MM2 (и любых других)
-local function animateMM2(show)
-    if not mm2Frame then return end
-    if show then
-        mm2Frame.Size = UDim2.new(0, 0, 0, 0)
-        mm2Frame.Visible = true
-        local tween = TweenService:Create(mm2Frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 400)})
-        tween:Play()
-    else
-        local tween = TweenService:Create(mm2Frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
-        tween:Play()
-        tween.Completed:Connect(function()
-            mm2Frame.Visible = false
-        end)
-    end
-end
-
 minimizeBtn.MouseButton1Click:Connect(function()
     animateHub(false)
 end)
@@ -186,7 +168,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Содержимое главного меню (кнопки игр)
+-- Содержимое главного меню
 local gameListFrame = Instance.new("Frame", mainFrame)
 gameListFrame.Size = UDim2.new(1, 0, 1, -36)
 gameListFrame.Position = UDim2.new(0, 0, 0, 36)
@@ -228,29 +210,20 @@ local function createGameButton(parent, yPos, gameName, callback)
     return btn
 end
 
-createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
-    createMM2Window()
-    animateMM2(true)
-end)
-
-createGameButton(gameListContent, 70, "🏥 Animal Hospital", function()
-    -- В разработке
-end)
-
-gameListContent.Size = UDim2.new(1, 0, 0, 130)
-gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
-
--- ==================== ОКНО MM2 ====================
+-- ==================== Управление окном MM2 ====================
 local mm2Frame = nil
-local openMM2Btn = nil
+local mm2OpenBtn = nil
 local targetWindow = nil
 
-function createMM2Window()
+local function createMM2Window()
     if mm2Frame then
-        animateMM2(true)
+        -- уже создано, просто показываем
+        mm2Frame.Visible = true
+        if targetWindow then targetWindow:Destroy(); targetWindow = nil end
         return
     end
 
+    -- Создание окна MM2
     mm2Frame = Instance.new("Frame")
     mm2Frame.Size = UDim2.new(0, 300, 0, 400)
     mm2Frame.Position = UDim2.new(0.5, -150, 0.2, 0)
@@ -259,7 +232,7 @@ function createMM2Window()
     mm2Frame.BorderSizePixel = 0
     mm2Frame.ClipsDescendants = true
     mm2Frame.Active = true
-    mm2Frame.Visible = false
+    mm2Frame.Visible = true
     mm2Frame.Parent = gui
 
     local mStroke = Instance.new("UIStroke", mm2Frame)
@@ -649,35 +622,36 @@ function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
-    openMM2Btn = Instance.new("TextButton")
-    openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
-    openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
-    openMM2Btn.BackgroundColor3 = Color3.fromRGB(255,200,0)
-    openMM2Btn.Text = "MM2"
-    openMM2Btn.TextColor3 = Color3.fromRGB(180,0,0)
-    openMM2Btn.TextSize = 18
-    openMM2Btn.Font = Enum.Font.GothamBold
-    openMM2Btn.Visible = false
-    openMM2Btn.Parent = gui
-    Instance.new("UICorner", openMM2Btn).CornerRadius = UDim.new(0, 10)
+    -- Кнопка для возврата (плавающая)
+    mm2OpenBtn = Instance.new("TextButton")
+    mm2OpenBtn.Size = UDim2.new(0, 100, 0, 40)
+    mm2OpenBtn.Position = UDim2.new(0.5, -50, 0.25, 0)
+    mm2OpenBtn.BackgroundColor3 = Color3.fromRGB(255,200,0)
+    mm2OpenBtn.Text = "MM2"
+    mm2OpenBtn.TextColor3 = Color3.fromRGB(180,0,0)
+    mm2OpenBtn.TextSize = 18
+    mm2OpenBtn.Font = Enum.Font.GothamBold
+    mm2OpenBtn.Visible = false
+    mm2OpenBtn.Parent = gui
+    Instance.new("UICorner", mm2OpenBtn).CornerRadius = UDim.new(0, 10)
 
-    makeDraggable(openMM2Btn, openMM2Btn)
+    makeDraggable(mm2OpenBtn, mm2OpenBtn)
 
     mMinimize.MouseButton1Click:Connect(function()
-        animateMM2(false)
-        openMM2Btn.Position = UDim2.new(mm2Frame.Position.X.Scale, mm2Frame.Position.X.Offset + 110, mm2Frame.Position.Y.Scale, mm2Frame.Position.Y.Offset)
-        openMM2Btn.Visible = true
+        mm2Frame.Visible = false
+        mm2OpenBtn.Visible = true
+        mm2OpenBtn.Position = UDim2.new(mm2Frame.Position.X.Scale, mm2Frame.Position.X.Offset + 110, mm2Frame.Position.Y.Scale, mm2Frame.Position.Y.Offset)
     end)
 
-    openMM2Btn.InputBegan:Connect(function(input)
+    mm2OpenBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             local clickStart = input.Position
-            openMM2Btn.InputEnded:Connect(function(input2)
+            mm2OpenBtn.InputEnded:Connect(function(input2)
                 if input2.UserInputType == Enum.UserInputType.MouseButton1 or input2.UserInputType == Enum.UserInputType.Touch then
                     if (input2.Position - clickStart).Magnitude < 10 then
-                        openMM2Btn.Visible = false
-                        mm2Frame.Position = UDim2.new(openMM2Btn.Position.X.Scale, openMM2Btn.Position.X.Offset - 110, openMM2Btn.Position.Y.Scale, openMM2Btn.Position.Y.Offset)
-                        animateMM2(true)
+                        mm2OpenBtn.Visible = false
+                        mm2Frame.Position = UDim2.new(mm2OpenBtn.Position.X.Scale, mm2OpenBtn.Position.X.Offset - 110, mm2OpenBtn.Position.Y.Scale, mm2OpenBtn.Position.Y.Offset)
+                        mm2Frame.Visible = true
                     end
                 end
             end)
@@ -685,11 +659,24 @@ function createMM2Window()
     end)
 
     mClose.MouseButton1Click:Connect(function()
-        animateMM2(false)
-        if openMM2Btn then openMM2Btn.Visible = false end
+        mm2Frame.Visible = false
+        if mm2OpenBtn then mm2OpenBtn.Visible = false end
         if targetWindow then targetWindow:Destroy(); targetWindow = nil end
     end)
 end
+
+-- Кнопка MM2 в главном меню
+createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
+    createMM2Window()
+end)
+
+-- Кнопка Animal Hospital (заглушка)
+createGameButton(gameListContent, 70, "🏥 Animal Hospital", function()
+    -- В разработке
+end)
+
+gameListContent.Size = UDim2.new(1, 0, 0, 130)
+gameScroll.CanvasSize = UDim2.new(0, 0, 0, 130)
 
 -- ==================== Game Logic ====================
 RunService.Stepped:Connect(function()
@@ -868,7 +855,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     hum.JumpPower = _G.JumpPower
 end)
 
--- ESP
+-- ESP (без изменений)
 ESP_objects = {}
 local OriginalSheriff = nil
 
