@@ -597,6 +597,7 @@ end
 
 mm2Btn.MouseButton1Click:Connect(createMM2Window)
 
+-- ==================== ИГРОВАЯ ЛОГИКА ====================
 -- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
@@ -648,14 +649,18 @@ task.spawn(function()
                                     task.wait(_G.AutoFarmDelay)
                                 end
                             else
+                                -- Slow mode: летим к монете по воздуху
                                 local currentChar = LocalPlayer.Character
                                 if currentChar and hum and hum.Health > 0 then
-                                    hum:MoveTo(coin.Position)
-                                    local t0 = tick()
-                                    while (root.Position - coin.Position).Magnitude > 5 and tick() - t0 < 5 do
+                                    hum.PlatformStand = true
+                                    local speed = 50
+                                    while (root.Position - coin.Position).Magnitude > 3 do
                                         if not _G.AutoFarm then break end
-                                        task.wait(0.1)
+                                        local direction = (coin.Position - root.Position).Unit
+                                        root.CFrame = root.CFrame + direction * speed * 0.05
+                                        task.wait()
                                     end
+                                    hum.PlatformStand = false
                                     task.wait(_G.AutoFarmDelay)
                                 end
                             end
@@ -725,7 +730,7 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
--- Kill All (при включении телепортирует всех к вам, если у вас нож)
+-- Kill All (телепортирует всех к вам)
 RunService.RenderStepped:Connect(function()
     if not _G.KillAll then return end
     local char = LocalPlayer.Character
