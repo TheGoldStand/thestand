@@ -5,7 +5,6 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Глобальные переменные
 _G.AutoFarm = false
 _G.AutoFarmDelay = 2
 _G.AutoFarmMode = "Fast"
@@ -17,14 +16,13 @@ _G.JumpPower = 50
 _G.TeleportAlways = false
 _G.ESPEnabled = false
 _G.GunESP = false
+_G.KillAll = false
 
--- ==================== GUI ====================
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
@@ -35,7 +33,6 @@ mainFrame.ClipsDescendants = true
 mainFrame.Active = true
 mainFrame.Parent = gui
 
--- Мерцающая золотая обводка
 local stroke = Instance.new("UIStroke", mainFrame)
 stroke.Thickness = 2.5
 stroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -50,7 +47,6 @@ end)
 
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
--- Заголовок
 local header = Instance.new("Frame", mainFrame)
 header.Size = UDim2.new(1, 0, 0, 36)
 header.BackgroundColor3 = Color3.fromRGB(255,200,0)
@@ -73,7 +69,6 @@ title.Font = Enum.Font.GothamBold
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Кнопки управления главным окном
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -66, 0, 3)
@@ -104,7 +99,6 @@ openHubBtn.Visible = false
 openHubBtn.Parent = gui
 Instance.new("UICorner", openHubBtn).CornerRadius = UDim.new(0, 10)
 
--- Перетаскивание
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local startPos = nil
@@ -156,7 +150,6 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Кнопка MM2 в главном меню
 local mm2Btn = Instance.new("TextButton", mainFrame)
 mm2Btn.Size = UDim2.new(1, -20, 0, 50)
 mm2Btn.Position = UDim2.new(0, 10, 0, 46)
@@ -176,7 +169,6 @@ btnGrad.Color = ColorSequence.new({
 })
 btnGrad.Rotation = 90
 
--- ==================== ОКНО MM2 ====================
 local mm2Frame = nil
 local openMM2Btn = nil
 local targetWindow = nil
@@ -263,7 +255,6 @@ local function createMM2Window()
     mContent.Size = UDim2.new(1, 0, 0, 0)
     mContent.BackgroundTransparency = 1
 
-    -- Фабрика элементов интерфейса
     local function createToggle(parent, y, text, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, -20, 0, 32)
@@ -371,7 +362,8 @@ local function createMM2Window()
         return holder
     end
 
-    -- Создание окна выбора цели (отдельный перетаскиваемый фрейм)
+    local targetSelectBtn
+
     local function createTargetWindow()
         if targetWindow then targetWindow:Destroy() end
         targetWindow = Instance.new("Frame")
@@ -432,7 +424,6 @@ local function createMM2Window()
         tContent.Size = UDim2.new(1, 0, 0, 0)
         tContent.BackgroundTransparency = 1
 
-        -- Заполняем список игроков
         local yP = 0
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr == LocalPlayer then continue end
@@ -490,7 +481,6 @@ local function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
-    -- Строим элементы меню
     local y = 0
     createToggle(mContent, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
     createInput(mContent, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
@@ -516,7 +506,7 @@ local function createMM2Window()
     end); y = y + 38
     createToggle(mContent, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
-    local targetSelectBtn = createButton(mContent, y, "Target: None", function()
+    targetSelectBtn = createButton(mContent, y, "Target: None", function()
         createTargetWindow()
     end)
     y = y + 38
@@ -556,14 +546,13 @@ local function createMM2Window()
         end
     end); y = y + 38
 
-    createToggle(mContent, y, "ESP Gun", function(state)
-        _G.GunESP = state
-    end); y = y + 38
+    createToggle(mContent, y, "ESP Gun", function(state) _G.GunESP = state end); y = y + 38
+
+    createToggle(mContent, y, "Kill All", function(state) _G.KillAll = state end); y = y + 38
 
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
     mScroll.CanvasSize = UDim2.new(0, 0, 0, mContent.Size.Y.Offset)
 
-    -- Кнопка разворачивания окна MM2
     openMM2Btn = Instance.new("TextButton")
     openMM2Btn.Size = UDim2.new(0, 100, 0, 40)
     openMM2Btn.Position = UDim2.new(0.5, -50, 0.25, 0)
@@ -608,7 +597,6 @@ end
 
 mm2Btn.MouseButton1Click:Connect(createMM2Window)
 
--- ==================== Игровая логика ====================
 -- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
@@ -737,6 +725,23 @@ RunService.RenderStepped:Connect(function()
     root.CFrame = targetRoot.CFrame
 end)
 
+-- Kill All (при включении телепортирует всех к вам, если у вас нож)
+RunService.RenderStepped:Connect(function()
+    if not _G.KillAll then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool or not tool.Name:lower():find("knife") then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            plr.Character.HumanoidRootPart.CFrame = root.CFrame * CFrame.new(math.random(-3,3), 0, math.random(-3,3))
+        end
+    end
+end)
+
+-- Сброс PlatformStand при выключении Fly
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -751,7 +756,6 @@ end)
 ESP_objects = {}
 local OriginalSheriff = nil
 
--- Определяем изначального шерифа
 task.spawn(function()
     while not OriginalSheriff do
         for _, p in ipairs(Players:GetPlayers()) do
@@ -786,11 +790,8 @@ local function getRole(player)
         end
     end
     if hasGun then
-        if OriginalSheriff and player == OriginalSheriff then
-            return "Sheriff"
-        else
-            return "Fake Sheriff"
-        end
+        if OriginalSheriff and player == OriginalSheriff then return "Sheriff"
+        else return "Fake Sheriff" end
     end
     return "Innocent"
 end
@@ -828,8 +829,20 @@ end
 
 local gunESPbox = nil
 
+-- Принудительное обновление ESP каждую секунду
+task.spawn(function()
+    while true do
+        if _G.ESPEnabled then
+            for _, obj in ipairs(ESP_objects) do
+                if obj.box then obj.box.Visible = false; obj.box:Remove() end
+            end
+            table.clear(ESP_objects)
+        end
+        task.wait(1)
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
-    -- Очистка старых боксов, если ESP выключен
     if not _G.ESPEnabled and not _G.GunESP then
         for _, obj in ipairs(ESP_objects) do
             if obj.box then obj.box.Visible = false; obj.box:Remove() end
@@ -839,7 +852,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- Role ESP
     local activeTargets = {}
     if _G.ESPEnabled then
         for _, plr in ipairs(Players:GetPlayers()) do
@@ -865,7 +877,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Удаляем боксы для игроков, которых больше нет или ESP выключен
     for i = #ESP_objects, 1, -1 do
         local obj = ESP_objects[i]
         if not activeTargets[obj.target] then
@@ -875,12 +886,10 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Обновляем позиции всех боксов
     for _, obj in ipairs(ESP_objects) do
         obj.update()
     end
 
-    -- Gun ESP
     if _G.GunESP then
         local gunTool = nil
         for _, obj in ipairs(Workspace:GetDescendants()) do
