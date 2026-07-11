@@ -1,8 +1,8 @@
 --[[
-    The G0ld Stand HUB v1.0
-    - Универсальный хаб с поддержкой игр
-    - В данный момент: Murder Mystery 2 (все функции из v12)
-    - Красивый интерфейс, золотая обводка, перетаскивание
+    The G0ld Stand HUB v2.0
+    - Исправлена ошибка "attempt to index nil with 'Visible'"
+    - Добавлены проверки на существование targetWindow и radioWindow
+    - Все функции MM2 из v12 сохранены
 ]]
 
 local Players = game:GetService("Players")
@@ -12,7 +12,7 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- ==================== Глобальные переменные MM2 ====================
+-- Глобальные переменные MM2
 _G.AutoFarm = false
 _G.AutoFarmDelay = 2
 _G.AutoFarmMode = "Fast"
@@ -27,13 +27,13 @@ _G.ESPRefresh = false
 _G.TeleportAlways = false
 _G.KillAllActive = false
 
--- ==================== Создание HUB GUI ====================
+-- ==================== HUB GUI ====================
 local hubGui = Instance.new("ScreenGui")
 hubGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 hubGui.ResetOnSpawn = false
 hubGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Главный фрейм хаба
+-- Главный фрейм
 local hubFrame = Instance.new("Frame")
 hubFrame.Size = UDim2.new(0, 320, 0, 400)
 hubFrame.Position = UDim2.new(0.5, -160, 0.1, 0)
@@ -44,7 +44,7 @@ hubFrame.ClipsDescendants = true
 hubFrame.Active = true
 hubFrame.Parent = hubGui
 
--- Золотая мерцающая обводка
+-- Мерцающая золотая обводка
 local stroke = Instance.new("UIStroke", hubFrame)
 stroke.Thickness = 2.5
 stroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -92,7 +92,7 @@ title.TextXAlignment = Enum.TextXAlignment.Center
 title.TextStrokeTransparency = 0.4
 title.TextStrokeColor3 = Color3.fromRGB(80, 0, 0)
 
--- Кнопка сворачивания (опционально)
+-- Кнопка сворачивания
 local minimizeHub = Instance.new("TextButton", header)
 minimizeHub.Size = UDim2.new(0, 36, 0, 36)
 minimizeHub.Position = UDim2.new(1, -36, 0, 0)
@@ -163,14 +163,14 @@ openHub.InputBegan:Connect(function(input)
     end
 end)
 
--- Контентная область (место для страниц)
+-- Контентная область
 local contentArea = Instance.new("Frame")
 contentArea.Size = UDim2.new(1, 0, 1, -40)
 contentArea.Position = UDim2.new(0, 0, 0, 40)
 contentArea.BackgroundTransparency = 1
 contentArea.Parent = hubFrame
 
--- ==================== Страница выбора игр ====================
+-- Страница выбора игр
 local gameListFrame = Instance.new("Frame", contentArea)
 gameListFrame.Size = UDim2.new(1, 0, 1, 0)
 gameListFrame.BackgroundTransparency = 1
@@ -188,7 +188,6 @@ local gameListContent = Instance.new("Frame", gameScroll)
 gameListContent.Size = UDim2.new(1, 0, 0, 0)
 gameListContent.BackgroundTransparency = 1
 
--- Функция создания кнопки игры
 local function createGameButton(parent, yPos, gameName, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 50)
@@ -213,23 +212,20 @@ local function createGameButton(parent, yPos, gameName, callback)
     return btn
 end
 
--- Кнопка MM2
 createGameButton(gameListContent, 10, "🔪 Murder Mystery 2", function()
     gameListFrame.Visible = false
     mm2Frame.Visible = true
 end)
 
--- Обновление размера списка
 gameListContent.Size = UDim2.new(1, 0, 0, 70)
 gameScroll.CanvasSize = UDim2.new(0, 0, 0, 70)
 
--- ==================== Страница MM2 ====================
+-- Страница MM2
 local mm2Frame = Instance.new("Frame", contentArea)
 mm2Frame.Size = UDim2.new(1, 0, 1, 0)
 mm2Frame.BackgroundTransparency = 1
 mm2Frame.Visible = false
 
--- Заголовок с кнопкой "Назад"
 local mm2TopBar = Instance.new("Frame", mm2Frame)
 mm2TopBar.Size = UDim2.new(1, 0, 0, 30)
 mm2TopBar.BackgroundTransparency = 1
@@ -262,7 +258,7 @@ local mm2Content = Instance.new("Frame", mm2Scroll)
 mm2Content.Size = UDim2.new(1, 0, 0, 0)
 mm2Content.BackgroundTransparency = 1
 
--- ==================== Все элементы интерфейса MM2 (как в v12) ====================
+-- Элементы UI для MM2
 local function createToggle(parent, yPos, text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 32)
@@ -374,7 +370,7 @@ local function createInputControl(parent, yPos, name, default, callback)
     return holder
 end
 
--- ==================== Окно выбора цели (draggable, глобальное) ====================
+-- Окно выбора цели
 local targetWindow = Instance.new("Frame")
 targetWindow.Size = UDim2.new(0, 220, 0, 250)
 targetWindow.Position = UDim2.new(0.5, -110, 0.3, 0)
@@ -416,7 +412,9 @@ closeTargetBtn.Text = "✕"
 closeTargetBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
 closeTargetBtn.Font = Enum.Font.GothamBold
 closeTargetBtn.TextSize = 16
-closeTargetBtn.MouseButton1Click:Connect(function() targetWindow.Visible = false end)
+closeTargetBtn.MouseButton1Click:Connect(function()
+    if targetWindow then targetWindow.Visible = false end
+end)
 
 makeDraggable(targetHeader, targetWindow)
 
@@ -468,7 +466,7 @@ local function refreshTargetList()
 
         entry.MouseButton1Click:Connect(function()
             _G.SelectedTarget = plr
-            targetWindow.Visible = false
+            if targetWindow then targetWindow.Visible = false end
             if targetSelectBtn then
                 targetSelectBtn.Text = "Target: " .. plr.Name
             end
@@ -485,16 +483,15 @@ local function refreshTargetList()
                 end
             end
         end)
-
         yP = yP + 40
     end
     tContent.Size = UDim2.new(1, 0, 0, yP)
     tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
 end
 
--- Закрытие при клике вне окна
+-- Безопасное закрытие окна выбора при клике вне
 UIS.InputBegan:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and targetWindow.Visible then
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and targetWindow and targetWindow.Visible then
         local pos = input.Position
         local absPos = targetWindow.AbsolutePosition
         local absSize = targetWindow.AbsoluteSize
@@ -508,7 +505,7 @@ UIS.InputBegan:Connect(function(input)
     end
 end)
 
--- ==================== Окно Radio ====================
+-- Окно радио
 local radioWindow = Instance.new("Frame")
 radioWindow.Size = UDim2.new(0, 250, 0, 120)
 radioWindow.Position = UDim2.new(0.5, -125, 0.35, 0)
@@ -549,7 +546,9 @@ closeRadioBtn.Text = "✕"
 closeRadioBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
 closeRadioBtn.Font = Enum.Font.GothamBold
 closeRadioBtn.TextSize = 16
-closeRadioBtn.MouseButton1Click:Connect(function() radioWindow.Visible = false end)
+closeRadioBtn.MouseButton1Click:Connect(function()
+    if radioWindow then radioWindow.Visible = false end
+end)
 
 makeDraggable(radioHeader, radioWindow)
 
@@ -600,7 +599,7 @@ radioPlayBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- ==================== Сборка MM2 UI ====================
+-- Построение интерфейса MM2
 local y = 0
 createToggle(mm2Content, y, "Auto Farm", function(state) _G.AutoFarm = state end); y = y + 38
 createInputControl(mm2Content, y, "AF Delay (s)", _G.AutoFarmDelay, function(val)
@@ -627,8 +626,10 @@ end); y = y + 38
 createToggle(mm2Content, y, "Noclip", function(state) _G.Noclip = state end); y = y + 38
 
 local targetSelectBtn = createButton(mm2Content, y, "Target: None", function()
-    if targetWindow.Visible then targetWindow.Visible = false
-    else refreshTargetList(); targetWindow.Visible = true end
+    if targetWindow then
+        if targetWindow.Visible then targetWindow.Visible = false
+        else refreshTargetList(); targetWindow.Visible = true end
+    end
 end)
 y = y + 38
 
@@ -673,15 +674,14 @@ end); y = y + 38
 createButton(mm2Content, y, "Take Gun", function() takeGun() end); y = y + 38
 
 createButton(mm2Content, y, "🎵 Radio", function()
-    radioWindow.Visible = not radioWindow.Visible
+    if radioWindow then radioWindow.Visible = not radioWindow.Visible end
 end); y = y + 38
 
 mm2Content.Size = UDim2.new(1, 0, 0, y + 10)
 mm2Scroll.CanvasSize = UDim2.new(0, 0, 0, mm2Content.Size.Y.Offset)
 
--- ==================== Логика функций MM2 ====================
+-- ==================== ЛОГИКА MM2 ====================
 
--- Noclip
 RunService.Stepped:Connect(function()
     if _G.Noclip then
         local char = LocalPlayer.Character
@@ -693,7 +693,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Real Fling
 RunService.Stepped:Connect(function()
     if not _G.Fling then return end
     if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
@@ -711,7 +710,6 @@ RunService.Stepped:Connect(function()
     targetRoot.Velocity = Vector3.new(math.random(-3000,3000), 5000, math.random(-3000,3000))
 end)
 
--- Auto Farm
 task.spawn(function()
     while true do
         if _G.AutoFarm then
@@ -772,7 +770,6 @@ task.spawn(function()
     end
 end)
 
--- Fly
 local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
 RunService.RenderStepped:Connect(function()
     if not _G.Fly then return end
@@ -799,7 +796,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Teleport Always с отбрасыванием
 RunService.RenderStepped:Connect(function()
     if not _G.TeleportAlways then return end
     if not _G.SelectedTarget or not _G.SelectedTarget.Character then return end
@@ -813,7 +809,6 @@ RunService.RenderStepped:Connect(function()
     targetRoot.Velocity = Vector3.new(math.random(-500,500), 500, math.random(-500,500))
 end)
 
--- Kill All
 function killAll()
     local char = LocalPlayer.Character
     if not char then return end
@@ -832,7 +827,6 @@ function killAll()
     end
 end
 
--- Take Gun (с земли)
 function takeGun()
     local gun = nil
     for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -852,7 +846,7 @@ function takeGun()
     end
 end
 
--- ==================== ESP ====================
+-- ESP
 local drawingCache = {}
 function clearESP()
     for _, obj in ipairs(drawingCache) do
@@ -954,7 +948,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     roleESPfunctions = {}
 end)
 
--- Сброс PlatformStand при отключении Fly/Fling
 RunService.Stepped:Connect(function()
     if not _G.Fling and not _G.Fly then
         local char = LocalPlayer.Character
@@ -967,4 +960,4 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("✅ The G0ld Stand HUB v1.0 загружен! Выберите игру в меню.")
+print("✅ The G0ld Stand HUB v2.0 загружен! Исправлена ошибка с Visible.")
