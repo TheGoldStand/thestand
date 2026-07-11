@@ -532,29 +532,23 @@ function createMM2Window()
         tScroll.CanvasSize = UDim2.new(0, 0, 0, yP)
     end
 
-    -- Функция выдачи Fling Tool (заглушка, заменишь позже)
-    local function giveFlingTool()
+    -- Выдача Tornado Tool (притягивает игроков, пока экипирован)
+    local function giveTornadoTool()
         local player = LocalPlayer
         local character = player.Character
         if not character then return end
         local backpack = player:FindFirstChild("Backpack")
         if not backpack then return end
-        -- Проверяем, нет ли уже такого тула
-        if backpack:FindFirstChild("FlingTool") or (character:FindFirstChild("FlingTool")) then return end
+
+        -- Удаляем предыдущий Tornado, если есть
+        local oldTool = backpack:FindFirstChild("Tornado") or character:FindFirstChild("Tornado")
+        if oldTool then oldTool:Destroy() end
 
         local tool = Instance.new("Tool")
-        tool.Name = "FlingTool"
+        tool.Name = "Tornado"
         tool.RequiresHandle = false
-        tool.ToolTip = "Fling Tool"
+        tool.ToolTip = "Tornado - Hold to pull all players"
         tool.Parent = backpack
-
-        local localScript = Instance.new("LocalScript")
-        localScript.Name = "FlingScript"
-        localScript.Source = [[
--- Здесь будет локальный скрипт для флинга, замени позже
-print("Fling Tool activated")
-        ]]
-        localScript.Parent = tool
     end
 
     local y = 0
@@ -626,8 +620,8 @@ print("Fling Tool activated")
 
     createToggle(mContent, y, "Kill All", function(state) _G.KillAll = state end); y = y + 38
 
-    createButton(mContent, y, "Fling Tool", function()
-        giveFlingTool()
+    createButton(mContent, y, "Tornado Tool", function()
+        giveTornadoTool()
     end); y = y + 38
 
     mContent.Size = UDim2.new(1, 0, 0, y + 10)
@@ -1065,6 +1059,30 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Tornado Tool притяжение (пока держим в руках)
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool or tool.Name ~= "Tornado" then return end
+
+    local myRoot = char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        local targetChar = plr.Character
+        if targetChar then
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local direction = (myRoot.Position - targetRoot.Position).Unit
+                targetRoot.Velocity = direction * 50  -- сила притяжения
+            end
+        end
+    end
+end)
+
+-- Сохранение настроек при ресете
 RunService.Stepped:Connect(function()
     if not _G.Fly then
         local char = LocalPlayer.Character
@@ -1075,7 +1093,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Применение сохранённых настроек при ресете персонажа
 LocalPlayer.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid")
     hum.WalkSpeed = _G.WalkSpeed
