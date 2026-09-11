@@ -103,35 +103,50 @@ local function createButton(y, text, callback)
     return btn
 end
 
-local function findTargetScreenGui()
+local function getTempleAndInv()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
-    for _, child in ipairs(playerGui:GetChildren()) do
-        if child:IsA("ScreenGui") and child.Name == "ScreenGui" and child ~= gui then
-            return child
-        end
-    end
-    return nil
-end
-
-local function copyFrameFromTemple(frameName)
-    local target = findTargetScreenGui()
-    if not target then return end
-    local temple = target:FindFirstChild("Temple")
-    local inv = target:FindFirstChild("Inv")
-    if not temple or not inv then return end
-
-    local sourceFrame = temple:FindFirstChild(frameName)
-    if not sourceFrame then return end
-
-    local clone = sourceFrame:Clone()
-    clone.Parent = inv
+    if not playerGui then return nil, nil end
+    local temple = playerGui:FindFirstChild("Temple", true)
+    local inv = playerGui:FindFirstChild("Inv", true)
+    return temple, inv
 end
 
 createButton(34, "tmm", function()
-    copyFrameFromTemple("Titan Magnetic Man")
+    local temple, inv = getTempleAndInv()
+    if not temple then
+        warn("Папка 'Temple' не найдена!")
+        return
+    end
+    if not inv then
+        warn("Папка 'Inv' не найдена!")
+        return
+    end
+    
+    local targetObj = temple:FindFirstChild("Titan Magnetic Man")
+    if targetObj then
+        local clone = targetObj:Clone()
+        clone.Parent = inv
+    else
+        warn("Объект 'Titan Magnetic Man' не найден в Temple!")
+    end
 end)
 
 createButton(90, "tsm", function()
-    copyFrameFromTemple("Titan Screw Man")
+    local temple, inv = getTempleAndInv()
+    if not temple then
+        warn("Папка 'Temple' не найдена!")
+        return
+    end
+    if not inv then
+        warn("Папка 'Inv' не найдена!")
+        return
+    end
+    
+    local targetObj = temple:FindFirstChild("Titan Screw Man")
+    if targetObj then
+        local clone = targetObj:Clone()
+        clone.Parent = inv
+    else
+        warn("Объект 'Titan Screw Man' не найден в Temple!")
+    end
 end)
