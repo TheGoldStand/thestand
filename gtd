@@ -1,0 +1,184 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 1. Инициализация базовых UI элементов
+local screenGui = PlayerGui:WaitForChild("ScreenGui")
+local templeFrame = screenGui:WaitForChild("Temple")
+local invFrame = screenGui:WaitForChild("Inv")
+
+local selectedViewport = nil
+
+-- 2. Создание главной панели управления
+local controlPanel = Instance.new("Frame")
+controlPanel.Name = "ControlPanel"
+controlPanel.Size = UDim2.new(0, 220, 0, 280)
+controlPanel.Position = UDim2.new(0.05, 0, 0.3, 0)
+controlPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+controlPanel.BorderSizePixel = 0
+controlPanel.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = controlPanel
+
+-- Кнопка "Выбрать"
+local selectButton = Instance.new("TextButton")
+selectButton.Name = "SelectButton"
+selectButton.Size = UDim2.new(0, 200, 0, 40)
+selectButton.Position = UDim2.new(0, 10, 0, 10)
+selectButton.BackgroundColor3 = Color3.fromRGB(60, 120, 210)
+selectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+selectButton.Text = "Выбрать"
+selectButton.Font = Enum.Font.SourceSansBold
+selectButton.TextSize = 18
+selectButton.Parent = controlPanel
+
+local selectCorner = Instance.new("UICorner")
+selectCorner.CornerRadius = UDim.new(0, 6)
+selectCorner.Parent = selectButton
+
+-- Кнопка "Скопировать"
+local copyButton = Instance.new("TextButton")
+copyButton.Name = "CopyButton"
+copyButton.Size = UDim2.new(0, 200, 0, 40)
+copyButton.Position = UDim2.new(0, 10, 0, 60)
+copyButton.BackgroundColor3 = Color3.fromRGB(45, 160, 85)
+copyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyButton.Text = "Скопировать в Inv"
+copyButton.Font = Enum.Font.SourceSansBold
+copyButton.TextSize = 18
+copyButton.Parent = controlPanel
+
+local copyCorner = Instance.new("UICorner")
+copyCorner.CornerRadius = UDim.new(0, 6)
+copyCorner.Parent = copyButton
+
+-- Выпадающий список ViewportFrame
+local listFrame = Instance.new("ScrollingFrame")
+listFrame.Name = "ViewportList"
+listFrame.Size = UDim2.new(0, 200, 0, 160)
+listFrame.Position = UDim2.new(0, 10, 0, 110)
+listFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+listFrame.BorderSizePixel = 0
+listFrame.Visible = false
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+listFrame.Parent = controlPanel
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 6)
+listCorner.Parent = listFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 4)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = listFrame
+
+-- 3. Функция перетаскивания окна
+local function makeDraggable(gui)
+	local dragging = false
+	local dragInput = nil
+	local dragStart = nil
+	local startPos = nil
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		gui.Position = UDim2.new(
+			startPos.X.Scale, 
+			startPos.X.Offset + delta.X, 
+			startPos.Y.Scale, 
+			startPos.Y.Offset + delta.Y
+		)
+	end
+
+	gui.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = gui.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	gui.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
+	end)
+end
+
+makeDraggable(controlPanel)
+
+-- 4. Логика поиска и копирования ViewportFrame
+local function updateViewportList()
+	for _, child in ipairs(listFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	local count = 0
+	for _, child in ipairs(templeFrame:GetChildren()) do
+		if child:IsA("ViewportFrame") then
+			count = count + 1
+			
+			local itemBtn = Instance.new("TextButton")
+			itemBtn.Size = UDim2.new(1, -8, 0, 30)
+			itemBtn.BackgroundColor3 = (selectedViewport == child) and Color3.fromRGB(80, 80, 120) or Color3.fromRGB(45, 45, 55)
+			itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			itemBtn.Text = child.Name
+			itemBtn.Font = Enum.Font.SourceSans
+			itemBtn.TextSize = 16
+			itemBtn.Parent = listFrame
+
+			local btnCorner = Instance.new("UICorner")
+			btnCorner.CornerRadius = UDim.new(0, 4)
+			btnCorner.Parent = itemBtn
+
+			itemBtn.MouseButton1Click:Connect(function()
+				selectedViewport = child
+				selectButton.Text = "Выбрано: " .. child.Name
+				listFrame.Visible = false
+			end)
+		end
+	end
+
+	if count == 0 then
+		selectButton.Text = "В Temple нет ViewportFrame!"
+	end
+end
+
+selectButton.MouseButton1Click:Connect(function`()
+	listFrame.Visible = not listFrame.Visible
+	if listFrame.Visible then
+		updateViewportList()
+	end
+end)
+
+copyButton.MouseButton1Click:Connect(function()
+	if not selectedViewport then
+		warn("[UI Error] Сначала выберите ViewportFrame!")
+		return
+	end
+
+	local clone = selectedViewport:Clone()
+	clone.Name = selectedViewport.Name .. "_Copy"
+	clone.Parent = invFrame
+	clone.Visible = true
+
+	print("[UI] Успешно скопировано в Inv:", clone.Name)
+end)
