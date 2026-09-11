@@ -2,6 +2,8 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
+local selectedFrame = nil
+
 local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
@@ -78,11 +80,134 @@ local function createButton(y, text, callback)
     return btn
 end
 
+local listFrame = nil
+
+local function createListWindow(frames)
+    if listFrame then listFrame:Destroy() end
+
+    listFrame = Instance.new("Frame")
+    listFrame.Size = UDim2.new(0, 220, 0, 280)
+    listFrame.Position = UDim2.new(0.5, -110, 0.3, 0)
+    listFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    listFrame.BackgroundTransparency = 0.15
+    listFrame.BorderSizePixel = 0
+    listFrame.Active = true
+    listFrame.Parent = gui
+
+    local lStroke = Instance.new("UIStroke", listFrame)
+    lStroke.Thickness = 2.5
+    lStroke.LineJoinMode = Enum.LineJoinMode.Round
+    task.spawn(function()
+        while true do
+            for _, c in ipairs({Color3.fromRGB(255,200,0), Color3.fromRGB(255,230,50), Color3.fromRGB(255,170,0), Color3.fromRGB(255,215,0)}) do
+                lStroke.Color = c
+                task.wait(0.4)
+            end
+        end
+    end)
+    Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0, 14)
+
+    local lHeader = Instance.new("Frame", listFrame)
+    lHeader.Size = UDim2.new(1, 0, 0, 32)
+    lHeader.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    lHeader.BorderSizePixel = 0
+    Instance.new("UICorner", lHeader).CornerRadius = UDim.new(0, 14)
+    local lhGrad = Instance.new("UIGradient", lHeader)
+    lhGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+    })
+    lhGrad.Rotation = 90
+
+    local lTitle = Instance.new("TextLabel", lHeader)
+    lTitle.Size = UDim2.new(1, -30, 1, 0)
+    lTitle.Position = UDim2.new(0, 10, 0, 0)
+    lTitle.Text = "Temple Frames"
+    lTitle.TextColor3 = Color3.fromRGB(180, 0, 0)
+    lTitle.Font = Enum.Font.GothamBold
+    lTitle.TextSize = 14
+    lTitle.BackgroundTransparency = 1
+    lTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    local lClose = Instance.new("TextButton", lHeader)
+    lClose.Size = UDim2.new(0, 30, 1, 0)
+    lClose.Position = UDim2.new(1, -30, 0, 0)
+    lClose.BackgroundTransparency = 1
+    lClose.Text = "✕"
+    lClose.TextColor3 = Color3.fromRGB(180, 0, 0)
+    lClose.Font = Enum.Font.GothamBold
+    lClose.TextSize = 16
+    lClose.MouseButton1Click:Connect(function()
+        listFrame:Destroy()
+        listFrame = nil
+    end)
+
+    makeDraggable(lHeader, listFrame)
+
+    local lScroll = Instance.new("ScrollingFrame", listFrame)
+    lScroll.Size = UDim2.new(1, 0, 1, -32)
+    lScroll.Position = UDim2.new(0, 0, 0, 32)
+    lScroll.BackgroundTransparency = 1
+    lScroll.BorderSizePixel = 0
+    lScroll.ScrollBarThickness = 4
+    lScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+    lScroll.ScrollBarImageTransparency = 0.8
+    lScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+    local lContent = Instance.new("Frame", lScroll)
+    lContent.Size = UDim2.new(1, 0, 0, 0)
+    lContent.BackgroundTransparency = 1
+
+    local y = 0
+    for _, frameObj in ipairs(frames) do
+        local entry = Instance.new("TextButton")
+        entry.Size = UDim2.new(1, -10, 0, 32)
+        entry.Position = UDim2.new(0, 5, 0, y)
+        entry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        entry.Text = frameObj.Name
+        entry.TextColor3 = Color3.fromRGB(255, 255, 255)
+        entry.Font = Enum.Font.GothamSemibold
+        entry.TextSize = 13
+        entry.BorderSizePixel = 0
+        entry.AutoButtonColor = false
+        Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
+        entry.Parent = lContent
+
+        entry.MouseButton1Click:Connect(function()
+            selectedFrame = frameObj
+            for _, child in ipairs(lContent:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                end
+            end
+            entry.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+        end)
+
+        y = y + 36
+    end
+
+    lContent.Size = UDim2.new(1, 0, 0, y)
+    lScroll.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+
 createButton(20, "Chose", function()
+    local temple = workspace:FindFirstChild("Temple")
+    if not temple then
+        return
+    end
+    local frames = {}
+    for _, child in ipairs(temple:GetChildren()) do
+        if child:IsA("Frame") then
+            table.insert(frames, child)
+        end
+    end
+    createListWindow(frames)
 end)
 
 createButton(80, "Copy", function()
-    if setclipboard then
-        setclipboard("The G0ld Stand HUB")
-    end
+    if not selectedFrame then return end
+    local inv = workspace:FindFirstChild("Inv")
+    if not inv then return end
+    local clone = selectedFrame:Clone()
+    clone.Parent = inv
 end)
