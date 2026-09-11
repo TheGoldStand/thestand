@@ -5,6 +5,7 @@ local LocalPlayer = Players.LocalPlayer
 local selectedFrame = nil
 
 local gui = Instance.new("ScreenGui")
+gui.Name = "gtd"
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -33,7 +34,6 @@ end)
 
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
--- Заголовок для перетаскивания
 local header = Instance.new("Frame", mainFrame)
 header.Size = UDim2.new(1, 0, 0, 26)
 header.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
@@ -105,26 +105,28 @@ local function createButton(y, text, callback)
     return btn
 end
 
-local listFrame = nil
-
--- Поиск фреймов в любых ScreenGui (LocalPlayer.PlayerGui, CoreGui и т.д.)
-local function findAllFramesByName(name)
-    local found = {}
-    local containers = {
-        LocalPlayer:FindFirstChild("PlayerGui"),
-        game:GetService("CoreGui")
-    }
-    for _, container in ipairs(containers) do
-        if container then
-            for _, descendant in ipairs(container:GetDescendants()) do
-                if descendant:IsA("Frame") and descendant.Name == name then
-                    table.insert(found, descendant)
-                end
-            end
+-- Находим целевой ScreenGui с названием "ScreenGui"
+local function findTargetScreenGui()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+    for _, child in ipairs(playerGui:GetChildren()) do
+        if child:IsA("ScreenGui") and child.Name == "ScreenGui" and child ~= gui then
+            return child
         end
     end
-    return found
+    return nil
 end
+
+-- Ищем Temple и Inv внутри найденного ScreenGui
+local function getTempleAndInv()
+    local target = findTargetScreenGui()
+    if not target then return nil, nil end
+    local temple = target:FindFirstChild("Temple")
+    local inv = target:FindFirstChild("Inv")
+    return temple, inv
+end
+
+local listFrame = nil
 
 local function createListWindow(frames)
     if listFrame then listFrame:Destroy() end
@@ -236,14 +238,12 @@ local function createListWindow(frames)
 end
 
 createButton(34, "Chose", function()
-    local templeFrames = findAllFramesByName("Temple")
-    if #templeFrames == 0 then return end
+    local temple, _ = getTempleAndInv()
+    if not temple then return end
     local allFrames = {}
-    for _, temple in ipairs(templeFrames) do
-        for _, child in ipairs(temple:GetChildren()) do
-            if child:IsA("Frame") then
-                table.insert(allFrames, child)
-            end
+    for _, child in ipairs(temple:GetChildren()) do
+        if child:IsA("Frame") then
+            table.insert(allFrames, child)
         end
     end
     if #allFrames == 0 then return end
@@ -252,9 +252,8 @@ end)
 
 createButton(90, "Copy", function()
     if not selectedFrame then return end
-    local invFrames = findAllFramesByName("Inv")
-    if #invFrames == 0 then return end
-    local inv = invFrames[1]
+    local _, inv = getTempleAndInv()
+    if not inv then return end
     local clone = selectedFrame:Clone()
     clone.Parent = inv
 end)
