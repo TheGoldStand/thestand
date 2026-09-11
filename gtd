@@ -105,24 +105,15 @@ local function createButton(y, text, callback)
     return btn
 end
 
--- Находим целевой ScreenGui с названием "ScreenGui"
-local function findTargetScreenGui()
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
-    for _, child in ipairs(playerGui:GetChildren()) do
-        if child:IsA("ScreenGui") and child.Name == "ScreenGui" and child ~= gui then
-            return child
-        end
-    end
-    return nil
-end
-
--- Ищем Temple и Inv внутри найденного ScreenGui
+-- Универсальный поиск Temple и Inv по всему PlayerGui
 local function getTempleAndInv()
-    local target = findTargetScreenGui()
-    if not target then return nil, nil end
-    local temple = target:FindFirstChild("Temple")
-    local inv = target:FindFirstChild("Inv")
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil, nil end
+    
+    -- Ищем элементы с именами Temple и Inv (включая потомков)
+    local temple = playerGui:FindFirstChild("Temple", true)
+    local inv = playerGui:FindFirstChild("Inv", true)
+    
     return temple, inv
 end
 
@@ -239,21 +230,34 @@ end
 
 createButton(34, "Chose", function()
     local temple, _ = getTempleAndInv()
-    if not temple then return end
+    if not temple then
+        warn("Папка/элемент 'Temple' не найдены в PlayerGui!")
+        return
+    end
+    
     local allFrames = {}
     for _, child in ipairs(temple:GetChildren()) do
-        if child:IsA("Frame") then
+        -- Поддерживаем как обычные Frame, так и ViewportFrame
+        if child:IsA("Frame") or child:IsA("ViewportFrame") then
             table.insert(allFrames, child)
         end
     end
-    if #allFrames == 0 then return end
+    
+    if #allFrames == 0 then
+        warn("Внутри 'Temple' нет подходящих элементов (Frame / ViewportFrame)!")
+        return
+    end
+    
     createListWindow(allFrames)
 end)
 
 createButton(90, "Copy", function()
     if not selectedFrame then return end
     local _, inv = getTempleAndInv()
-    if not inv then return end
+    if not inv then
+        warn("Папка/элемент 'Inv' не найдены в PlayerGui!")
+        return
+    end
     local clone = selectedFrame:Clone()
     clone.Parent = inv
 end)
