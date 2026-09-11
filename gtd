@@ -8,6 +8,7 @@ local gui = Instance.new("ScreenGui")
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 999
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 250, 0, 150)
@@ -32,6 +33,29 @@ end)
 
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
+-- Заголовок для перетаскивания
+local header = Instance.new("Frame", mainFrame)
+header.Size = UDim2.new(1, 0, 0, 26)
+header.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+header.BorderSizePixel = 0
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
+local hGrad = Instance.new("UIGradient", header)
+hGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+})
+hGrad.Rotation = 90
+
+local hTitle = Instance.new("TextLabel", header)
+hTitle.Size = UDim2.new(1, -10, 1, 0)
+hTitle.Position = UDim2.new(0, 10, 0, 0)
+hTitle.Text = "The G0ld Stand"
+hTitle.TextColor3 = Color3.fromRGB(180, 0, 0)
+hTitle.Font = Enum.Font.GothamBold
+hTitle.TextSize = 13
+hTitle.BackgroundTransparency = 1
+hTitle.TextXAlignment = Enum.TextXAlignment.Left
+
 local function makeDraggable(dragArea, moveTarget)
     local dragging = false
     local startPos = nil
@@ -55,7 +79,7 @@ local function makeDraggable(dragArea, moveTarget)
         end
     end)
 end
-makeDraggable(mainFrame, mainFrame)
+makeDraggable(header, mainFrame)
 
 local function createButton(y, text, callback)
     local btn = Instance.new("TextButton")
@@ -68,6 +92,7 @@ local function createButton(y, text, callback)
     btn.TextSize = 15
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
+    btn.Active = true
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     local grad = Instance.new("UIGradient", btn)
     grad.Color = ColorSequence.new({
@@ -82,12 +107,31 @@ end
 
 local listFrame = nil
 
+-- Поиск фреймов в любых ScreenGui (LocalPlayer.PlayerGui, CoreGui и т.д.)
+local function findAllFramesByName(name)
+    local found = {}
+    local containers = {
+        LocalPlayer:FindFirstChild("PlayerGui"),
+        game:GetService("CoreGui")
+    }
+    for _, container in ipairs(containers) do
+        if container then
+            for _, descendant in ipairs(container:GetDescendants()) do
+                if descendant:IsA("Frame") and descendant.Name == name then
+                    table.insert(found, descendant)
+                end
+            end
+        end
+    end
+    return found
+end
+
 local function createListWindow(frames)
     if listFrame then listFrame:Destroy() end
 
     listFrame = Instance.new("Frame")
     listFrame.Size = UDim2.new(0, 220, 0, 280)
-    listFrame.Position = UDim2.new(0.5, -110, 0.3, 0)
+    listFrame.Position = UDim2.new(0.5, 130, 0.3, 0)
     listFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     listFrame.BackgroundTransparency = 0.15
     listFrame.BorderSizePixel = 0
@@ -170,6 +214,7 @@ local function createListWindow(frames)
         entry.TextSize = 13
         entry.BorderSizePixel = 0
         entry.AutoButtonColor = false
+        entry.Active = true
         Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
         entry.Parent = lContent
 
@@ -190,24 +235,26 @@ local function createListWindow(frames)
     lScroll.CanvasSize = UDim2.new(0, 0, 0, y)
 end
 
-createButton(20, "Chose", function()
-    local temple = workspace:FindFirstChild("Temple")
-    if not temple then
-        return
-    end
-    local frames = {}
-    for _, child in ipairs(temple:GetChildren()) do
-        if child:IsA("Frame") then
-            table.insert(frames, child)
+createButton(34, "Chose", function()
+    local templeFrames = findAllFramesByName("Temple")
+    if #templeFrames == 0 then return end
+    local allFrames = {}
+    for _, temple in ipairs(templeFrames) do
+        for _, child in ipairs(temple:GetChildren()) do
+            if child:IsA("Frame") then
+                table.insert(allFrames, child)
+            end
         end
     end
-    createListWindow(frames)
+    if #allFrames == 0 then return end
+    createListWindow(allFrames)
 end)
 
-createButton(80, "Copy", function()
+createButton(90, "Copy", function()
     if not selectedFrame then return end
-    local inv = workspace:FindFirstChild("Inv")
-    if not inv then return end
+    local invFrames = findAllFramesByName("Inv")
+    if #invFrames == 0 then return end
+    local inv = invFrames[1]
     local clone = selectedFrame:Clone()
     clone.Parent = inv
 end)
