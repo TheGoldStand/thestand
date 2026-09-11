@@ -1,184 +1,242 @@
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+-- ==================== Управление окном Temple -> Inv ====================
+local templeInvFrame = nil
+local templeInvOpenBtn = nil
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local function createTempleInvWindow()
+    if templeInvFrame then
+        templeInvFrame.Visible = true
+        return
+    end
 
--- 1. Инициализация базовых UI элементов
-local screenGui = PlayerGui:WaitForChild("ScreenGui")
-local templeFrame = screenGui:WaitForChild("Temple")
-local invFrame = screenGui:WaitForChild("Inv")
+    -- Главное окно функции
+    templeInvFrame = Instance.new("Frame")
+    templeInvFrame.Size = UDim2.new(0, 320, 0, 300)
+    templeInvFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
+    templeInvFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    templeInvFrame.BackgroundTransparency = 0.15
+    templeInvFrame.BorderSizePixel = 0
+    templeInvFrame.ClipsDescendants = true
+    templeInvFrame.Active = true
+    templeInvFrame.Visible = true
+    templeInvFrame.Parent = gui
 
-local selectedViewport = nil
+    local tStroke = Instance.new("UIStroke", templeInvFrame)
+    tStroke.Thickness = 2.5
+    tStroke.LineJoinMode = Enum.LineJoinMode.Round
+    tStroke.Color = Color3.fromRGB(255, 200, 0)
+    Instance.new("UICorner", templeInvFrame).CornerRadius = UDim.new(0, 14)
 
--- 2. Создание главной панели управления
-local controlPanel = Instance.new("Frame")
-controlPanel.Name = "ControlPanel"
-controlPanel.Size = UDim2.new(0, 220, 0, 280)
-controlPanel.Position = UDim2.new(0.05, 0, 0.3, 0)
-controlPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-controlPanel.BorderSizePixel = 0
-controlPanel.Parent = screenGui
+    -- Шапка окна
+    local header = Instance.new("Frame", templeInvFrame)
+    header.Size = UDim2.new(1, 0, 0, 36)
+    header.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    header.BorderSizePixel = 0
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = controlPanel
+    local hGrad = Instance.new("UIGradient", header)
+    hGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 50)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 0))
+    })
+    hGrad.Rotation = 90
 
--- Кнопка "Выбрать"
-local selectButton = Instance.new("TextButton")
-selectButton.Name = "SelectButton"
-selectButton.Size = UDim2.new(0, 200, 0, 40)
-selectButton.Position = UDim2.new(0, 10, 0, 10)
-selectButton.BackgroundColor3 = Color3.fromRGB(60, 120, 210)
-selectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-selectButton.Text = "Выбрать"
-selectButton.Font = Enum.Font.SourceSansBold
-selectButton.TextSize = 18
-selectButton.Parent = controlPanel
+    local title = Instance.new("TextLabel", header)
+    title.Size = UDim2.new(1, -70, 1, 0)
+    title.Position = UDim2.new(0, 15, 0, 0)
+    title.Text = "Temple to Inv Copier"
+    title.TextColor3 = Color3.fromRGB(180, 0, 0)
+    title.TextSize = 15
+    title.Font = Enum.Font.GothamBold
+    title.BackgroundTransparency = 1
+    title.TextXAlignment = Enum.TextXAlignment.Left
 
-local selectCorner = Instance.new("UICorner")
-selectCorner.CornerRadius = UDim.new(0, 6)
-selectCorner.Parent = selectButton
+    local closeBtn = Instance.new("TextButton", header)
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -33, 0, 3)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(180, 0, 0)
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
 
--- Кнопка "Скопировать"
-local copyButton = Instance.new("TextButton")
-copyButton.Name = "CopyButton"
-copyButton.Size = UDim2.new(0, 200, 0, 40)
-copyButton.Position = UDim2.new(0, 10, 0, 60)
-copyButton.BackgroundColor3 = Color3.fromRGB(45, 160, 85)
-copyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-copyButton.Text = "Скопировать в Inv"
-copyButton.Font = Enum.Font.SourceSansBold
-copyButton.TextSize = 18
-copyButton.Parent = controlPanel
+    makeDraggable(header, templeInvFrame)
 
-local copyCorner = Instance.new("UICorner")
-copyCorner.CornerRadius = UDim.new(0, 6)
-copyCorner.Parent = copyButton
+    -- Контентная часть
+    local contentHolder = Instance.new("Frame", templeInvFrame)
+    contentHolder.Size = UDim2.new(1, 0, 1, -36)
+    contentHolder.Position = UDim2.new(0, 0, 0, 36)
+    contentHolder.BackgroundTransparency = 1
 
--- Выпадающий список ViewportFrame
-local listFrame = Instance.new("ScrollingFrame")
-listFrame.Name = "ViewportList"
-listFrame.Size = UDim2.new(0, 200, 0, 160)
-listFrame.Position = UDim2.new(0, 10, 0, 110)
-listFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-listFrame.BorderSizePixel = 0
-listFrame.Visible = false
-listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-listFrame.Parent = controlPanel
+    -- Выбранный объект хранилище
+    local selectedViewFrame = nil
 
-local listCorner = Instance.new("UICorner")
-listCorner.CornerRadius = UDim.new(0, 6)
-listCorner.Parent = listFrame
+    -- Кнопка "Выбрать"
+    local selectBtn = Instance.new("TextButton", contentHolder)
+    selectBtn.Size = UDim2.new(1, -30, 0, 45)
+    selectBtn.Position = UDim2.new(0, 15, 0, 20)
+    selectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    selectBtn.Text = "Выбрать: Не выбрано"
+    selectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    selectBtn.Font = Enum.Font.GothamSemibold
+    selectBtn.TextSize = 14
+    selectBtn.BorderSizePixel = 0
+    Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 8)
 
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 4)
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Parent = listFrame
+    -- Кнопка "Копировать"
+    local copyBtn = Instance.new("TextButton", contentHolder)
+    copyBtn.Size = UDim2.new(1, -30, 0, 45)
+    copyBtn.Position = UDim2.new(0, 15, 0, 80)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 80)
+    copyBtn.Text = "Копировать в Inv"
+    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    copyBtn.Font = Enum.Font.GothamBold
+    copyBtn.TextSize = 15
+    copyBtn.BorderSizePixel = 0
+    Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 8)
 
--- 3. Функция перетаскивания окна
-local function makeDraggable(gui)
-	local dragging = false
-	local dragInput = nil
-	local dragStart = nil
-	local startPos = nil
+    -- Статус / Информация
+    local statusLabel = Instance.new("TextLabel", contentHolder)
+    statusLabel.Size = UDim2.new(1, -30, 0, 40)
+    statusLabel.Position = UDim2.new(0, 15, 0, 140)
+    statusLabel.Text = ""
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextSize = 13
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.TextWrapped = true
 
-	local function update(input)
-		local delta = input.Position - dragStart
-		gui.Position = UDim2.new(
-			startPos.X.Scale, 
-			startPos.X.Offset + delta.X, 
-			startPos.Y.Scale, 
-			startPos.Y.Offset + delta.Y
-		)
-	end
+    -- Окно со списком ViewportFrame из Temple
+    local listWindow = nil
+    local function openTempleSelector()
+        if listWindow then listWindow:Destroy() end
 
-	gui.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = gui.Position
+        listWindow = Instance.new("Frame")
+        listWindow.Size = UDim2.new(0, 260, 0, 200)
+        listWindow.Position = UDim2.new(0.5, -130, 0.5, -80)
+        listWindow.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        listWindow.BorderSizePixel = 0
+        listWindow.Active = true
+        listWindow.Parent = gui
+        Instance.new("UICorner", listWindow).CornerRadius = UDim.new(0, 10)
+        Instance.new("UIStroke", listWindow).Color = Color3.fromRGB(255, 200, 0)
 
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
+        local lHeader = Instance.new("Frame", listWindow)
+        lHeader.Size = UDim2.new(1, 0, 0, 30)
+        lHeader.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+        Instance.new("UICorner", lHeader).CornerRadius = UDim.new(0, 10)
 
-	gui.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
-		end
-	end)
+        local lTitle = Instance.new("TextLabel", lHeader)
+        lTitle.Size = UDim2.new(1, -30, 1, 0)
+        lTitle.Position = UDim2.new(0, 10, 0, 0)
+        lTitle.Text = "Выберите ViewportFrame"
+        lTitle.TextColor3 = Color3.fromRGB(180, 0, 0)
+        lTitle.Font = Enum.Font.GothamBold
+        lTitle.TextSize = 13
+        lTitle.BackgroundTransparency = 1
+        lTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-	UserInputService.InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			update(input)
-		end
-	end)
+        local lClose = Instance.new("TextButton", lHeader)
+        lClose.Size = UDim2.new(0, 30, 1, 0)
+        lClose.Position = UDim2.new(1, -30, 0, 0)
+        lClose.BackgroundTransparency = 1
+        lClose.Text = "✕"
+        lClose.TextColor3 = Color3.fromRGB(180, 0, 0)
+        lClose.Font = Enum.Font.GothamBold
+        lClose.MouseButton1Click:Connect(function()
+            listWindow:Destroy()
+            listWindow = nil
+        end)
+
+        makeDraggable(lHeader, listWindow)
+
+        local scrolling = Instance.new("ScrollingFrame", listWindow)
+        scrolling.Size = UDim2.new(1, 0, 1, -30)
+        scrolling.Position = UDim2.new(0, 0, 0, 30)
+        scrolling.BackgroundTransparency = 1
+        scrolling.ScrollBarThickness = 4
+
+        local scLayout = Instance.new("UIListLayout", scrolling)
+        scLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        scLayout.Padding = UDim.new(0, 4)
+
+        -- Ищем папку/фрейм Temple в PlayerGui или Workspace
+        local templeFolder = LocalPlayer.PlayerGui:FindFirstChild("Temple", true) or Workspace:FindFirstChild("Temple", true)
+        
+        local count = 0
+        if templeFolder then
+            for _, obj in ipairs(templeFolder:GetDescendants()) do
+                if obj:IsA("ViewportFrame") then
+                    count = count + 1
+                    local itemBtn = Instance.new("TextButton")
+                    itemBtn.Size = UDim2.new(1, -10, 0, 32)
+                    itemBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+                    itemBtn.Text = obj.Name
+                    itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    itemBtn.Font = Enum.Font.GothamSemibold
+                    itemBtn.TextSize = 12
+                    itemBtn.BorderSizePixel = 0
+                    Instance.new("UICorner", itemBtn).CornerRadius = UDim.new(0, 6)
+                    itemBtn.Parent = scrolling
+
+                    itemBtn.MouseButton1Click:Connect(function()
+                        selectedViewFrame = obj
+                        selectBtn.Text = "Выбран: " .. obj.Name
+                        statusLabel.Text = "Готов к копированию."
+                        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                        listWindow:Destroy()
+                        listWindow = nil
+                    end)
+                end
+            end
+        end
+
+        if count == 0 then
+            local errLbl = Instance.new("TextLabel", scrolling)
+            errLbl.Size = UDim2.new(1, 0, 0, 40)
+            errLbl.BackgroundTransparency = 1
+            errLbl.Text = "Temple или ViewportFrame не найдены!"
+            errLbl.TextColor3 = Color3.fromRGB(255, 80, 80)
+            errLbl.Font = Enum.Font.Gotham
+            errLbl.TextSize = 12
+        end
+
+        scrolling.CanvasSize = UDim2.new(0, 0, 0, count * 36)
+    end
+
+    selectBtn.MouseButton1Click:Connect(function()
+        openTempleSelector()
+    end)
+
+    -- Логика кнопки копирования в "Inv"
+    copyBtn.MouseButton1Click:Connect(function()
+        if not selectedViewFrame then
+            statusLabel.Text = "Ошибка: Сначала выберите ViewportFrame!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return
+        end
+
+        -- Ищем папку/фрейм Inv
+        local invFolder = LocalPlayer.PlayerGui:FindFirstChild("Inv", true) or Workspace:FindFirstChild("Inv", true)
+        if not invFolder then
+            statusLabel.Text = "Ошибка: Фрейм/папка 'Inv' не найдена!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return
+        end
+
+        -- Клонируем выбранный элемент в Inv
+        local cloned = selectedViewFrame:Clone()
+        cloned.Parent = invFolder
+        statusLabel.Text = "Успешно скопировано в Inv!"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end)
+
+    closeBtn.MouseButton1Click:Connect(function()
+        templeInvFrame.Visible = false
+        if listWindow then listWindow:Destroy(); listWindow = nil end
+    end)
 end
 
-makeDraggable(controlPanel)
-
--- 4. Логика поиска и копирования ViewportFrame
-local function updateViewportList()
-	for _, child in ipairs(listFrame:GetChildren()) do
-		if child:IsA("TextButton") then
-			child:Destroy()
-		end
-	end
-
-	local count = 0
-	for _, child in ipairs(templeFrame:GetChildren()) do
-		if child:IsA("ViewportFrame") then
-			count = count + 1
-			
-			local itemBtn = Instance.new("TextButton")
-			itemBtn.Size = UDim2.new(1, -8, 0, 30)
-			itemBtn.BackgroundColor3 = (selectedViewport == child) and Color3.fromRGB(80, 80, 120) or Color3.fromRGB(45, 45, 55)
-			itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			itemBtn.Text = child.Name
-			itemBtn.Font = Enum.Font.SourceSans
-			itemBtn.TextSize = 16
-			itemBtn.Parent = listFrame
-
-			local btnCorner = Instance.new("UICorner")
-			btnCorner.CornerRadius = UDim.new(0, 4)
-			btnCorner.Parent = itemBtn
-
-			itemBtn.MouseButton1Click:Connect(function()
-				selectedViewport = child
-				selectButton.Text = "Выбрано: " .. child.Name
-				listFrame.Visible = false
-			end)
-		end
-	end
-
-	if count == 0 then
-		selectButton.Text = "В Temple нет ViewportFrame!"
-	end
-end
-
-selectButton.MouseButton1Click:Connect(function`()
-	listFrame.Visible = not listFrame.Visible
-	if listFrame.Visible then
-		updateViewportList()
-	end
-end)
-
-copyButton.MouseButton1Click:Connect(function()
-	if not selectedViewport then
-		warn("[UI Error] Сначала выберите ViewportFrame!")
-		return
-	end
-
-	local clone = selectedViewport:Clone()
-	clone.Name = selectedViewport.Name .. "_Copy"
-	clone.Parent = invFrame
-	clone.Visible = true
-
-	print("[UI] Успешно скопировано в Inv:", clone.Name)
+-- Кнопка для открытия этого меню в вашем главном меню хаба (gameListContent)
+createGameButton(gameListContent, 130, "📦 Temple & Inv Copier", function()
+    createTempleInvFunction() -- либо вызов createTempleInvWindow()
 end)
